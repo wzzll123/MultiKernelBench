@@ -3,6 +3,7 @@
 A benchmark for evaluating LLMs' ability to generate kernels for various platform. Now supporting CUDA and triton kernels for GPUs, Ascendc and TileLang kernels for NPUs, pallas kernels for TPUs and SYCL kernels for Intel GPUs.
 
 ## Latest News
+- **27/10/2025** – Introduced a new task category featuring 15 attention tasks, including MQA and GQA. 
 - **08/10/2025** – Added **TileLang-Ascend backend** support for **Ascend NPUs**.  
 - **12/08/2025** – Added **SYCL backend** support for **Intel GPUs** – thanks to **NinaWie** for the contribution!  
 - **18/07/2025** – 🎉 Announced the open-source release of **MultiKernelBench**, a **multi-platform benchmark for kernel generation**, now publicly available!

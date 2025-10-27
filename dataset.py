@@ -860,5 +860,50 @@ dataset = {
     },
     "min_reduction_over_a_dimension": {
         "category": "reduce"
+    },
+    "causal_attention": {
+        "category": "attention"
+    },
+    "kv_cached_attention_inference": {
+        "category": "attention"
+    },
+    "multi_head_attention": {
+        "category": "attention"
+    },
+    "scaled_dot_product_attention_long_context": {
+        "category": "attention"
+    },
+    "cross_attention": {
+        "category": "attention"
+    },
+    "kv_cached_chat_batch_attention": {
+        "category": "attention"
+    },
+    "multi_query_attention": {
+        "category": "attention"
+    },
+    "sparse_attention": {
+        "category": "attention"
+    },
+    "cross_modal_attention": {
+        "category": "attention"
+    },
+    "kv_cached_speculative_attention": {
+        "category": "attention"
+    },
+    "scaled_dot_product_attention": {
+        "category": "attention"
+    },
+    "windowed_causal_attention": {
+        "category": "attention"
+    },
+    "group_query_attention": {
+        "category": "attention"
+    },
+    "linear_attention": {
+        "category": "attention"
+    },
+    "scaled_dot_product_attention_inference": {
+        "category": "attention"
     }
 }
