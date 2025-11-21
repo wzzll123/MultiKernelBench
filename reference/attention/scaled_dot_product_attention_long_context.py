@@ -18,9 +18,9 @@ seq_len = 16384
 d_model = 12288
 
 def get_inputs():
-    Q = torch.randn(batch_size, seq_len, d_model)
-    K = torch.randn(batch_size, seq_len, d_model)
-    V = torch.randn(batch_size, seq_len, d_model)
+    Q = torch.rand(batch_size, seq_len, d_model)
+    K = torch.rand(batch_size, seq_len, d_model)
+    V = torch.rand(batch_size, seq_len, d_model)
     return [Q, K, V]
 
 def get_init_inputs():

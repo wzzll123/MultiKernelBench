@@ -22,8 +22,8 @@ len_text = 32
 len_img = 196
 
 def get_inputs():
-    text = torch.randn(batch_size, len_text, 256)
-    img = torch.randn(batch_size, len_img, 512)
+    text = torch.rand(batch_size, len_text, 256)
+    img = torch.rand(batch_size, len_img, 512)
     return [text, img]
 
 def get_init_inputs():

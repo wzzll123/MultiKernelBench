@@ -6,7 +6,7 @@ class Model(nn.Module):
         return torch.index_select(x, dim=1, index=indices)
 
 def get_inputs():
-    x = torch.randn(256, 8192)
+    x = torch.rand(256, 8192)
     indices = torch.randint(0, 8192, (2048,))
     return [x, indices]
 

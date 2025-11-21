@@ -9,7 +9,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.matmul = nn.Linear(in_features, out_features)
         self.bn = nn.BatchNorm1d(out_features, eps=bn_eps, momentum=bn_momentum)
-        self.bias = nn.Parameter(torch.randn(bias_shape))
+        self.bias = nn.Parameter(torch.rand(bias_shape))
         self.divide_value = divide_value
 
     def forward(self, x):
@@ -29,7 +29,7 @@ bias_shape = (1,)
 divide_value = 1.0
 
 def get_inputs():
-    return [torch.randn(batch_size, in_features)]
+    return [torch.rand(batch_size, in_features)]
 
 def get_init_inputs():
     return [in_features, out_features, bn_eps, bn_momentum, bias_shape, divide_value]

@@ -9,7 +9,7 @@ class Model(nn.Module):
         return x + bias
 
 def get_inputs():
-    x = torch.randn(4, 2048)
+    x = torch.rand(4, 2048)
     bias = torch.tensor(3.1415)
     return [x, bias]
 

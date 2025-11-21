@@ -6,7 +6,7 @@ class Model(nn.Module):
         return x.masked_fill(mask, float('-inf'))
 
 def get_inputs():
-    x = torch.randn(64, 512, 512)
+    x = torch.rand(64, 512, 512)
     mask = torch.randint(0, 2, (64, 512, 512), dtype=torch.bool)
     return [x, mask]
 

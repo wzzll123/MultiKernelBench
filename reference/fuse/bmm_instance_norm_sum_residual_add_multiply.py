@@ -30,7 +30,7 @@ in_features = 64
 out_features = 128
 
 def get_inputs():
-    return [torch.randn(batch_size, in_features), torch.randn(batch_size, out_features)]
+    return [torch.rand(batch_size, in_features), torch.rand(batch_size, out_features)]
 
 def get_init_inputs():
     return [in_features, out_features]

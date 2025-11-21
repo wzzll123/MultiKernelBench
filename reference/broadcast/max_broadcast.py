@@ -9,8 +9,8 @@ class Model(nn.Module):
         return torch.maximum(a, b)
 
 def get_inputs():
-    a = torch.randn(16, 1, 1024)
-    b = torch.randn(1, 256, 1)
+    a = torch.rand(16, 1, 1024)
+    b = torch.rand(1, 256, 1)
     return [a, b]
 
 def get_init_inputs():

@@ -37,7 +37,7 @@ layer_sizes = [400, 800]
 output_size = 500
 
 def get_inputs():
-    return [torch.randn(batch_size, input_size)]
+    return [torch.rand(batch_size, input_size)]
 
 def get_init_inputs():
     return [input_size, layer_sizes, output_size]

@@ -8,7 +8,7 @@ class Model(nn.Module):
 def get_inputs():
     x = torch.zeros(64, 8192)
     idx = torch.randint(0, 8192, (64, 4096))
-    updates = torch.randn_like(idx, dtype=torch.float)
+    updates = torch.rand_like(idx, dtype=torch.float)
     return [x, idx, updates]
 
 def get_init_inputs():

@@ -9,7 +9,7 @@ class Model(nn.Module):
         return x ** exponent
 
 def get_inputs():
-    x = torch.abs(torch.randn(4, 2048)) + 1e-2
+    x = torch.abs(torch.rand(4, 2048)) + 1e-2
     exponent = torch.full((2048,), 0.5,)
     return [x, exponent]
 

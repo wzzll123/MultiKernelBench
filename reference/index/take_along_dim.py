@@ -6,7 +6,7 @@ class Model(nn.Module):
         return torch.take_along_dim(x, idx, dim=1)
 
 def get_inputs():
-    x = torch.randn(128, 8192)
+    x = torch.rand(128, 8192)
     idx = torch.randint(0, 8192, (128, 4096))
     return [x, idx]
 

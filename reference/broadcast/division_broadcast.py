@@ -9,8 +9,8 @@ class Model(nn.Module):
         return x / scale  # broadcast over channels
 
 def get_inputs():
-    x = torch.randn(8, 3, 32, 128)
-    scale = torch.randn(3, 1, 1)  # broadcast over H and W
+    x = torch.rand(8, 3, 32, 128)
+    scale = torch.rand(3, 1, 1)  # broadcast over H and W
     return [x, scale]
 
 def get_init_inputs():

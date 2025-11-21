@@ -7,10 +7,10 @@ class Model(nn.Module):
 
 def get_inputs():
     N, C, H, W = 4, 3, 256, 256
-    x = torch.randn(N, C, H, W)
+    x = torch.rand(N, C, H, W)
     # random warped grid
     base = F.affine_grid(torch.eye(2, 3).unsqueeze(0).repeat(N,1,1).to(x), size=x.size(), align_corners=False)
-    noise = torch.randn_like(base) * 0.05
+    noise = torch.rand_like(base) * 0.05
     grid = base + noise
     return [x, grid]
 

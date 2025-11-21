@@ -9,8 +9,8 @@ class Model(nn.Module):
         return x + bias.view(1, -1, 1, 1)
 
 def get_inputs():
-    x = torch.randn(8, 512, 32, 32)
-    bias = torch.randn(512)
+    x = torch.rand(8, 512, 32, 32)
+    bias = torch.rand(512)
     return [x, bias]
 
 def get_init_inputs():

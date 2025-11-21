@@ -14,7 +14,7 @@ class Model(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
-        self.hidden = torch.randn((batch_size, hidden_size))
+        self.hidden = torch.rand((batch_size, hidden_size))
         
         # Define the RNN cell components (input to hidden, hidden to hidden, and hidden to output)
         self.i2h = nn.Linear(input_size + hidden_size, hidden_size)  # Input to hidden
@@ -42,7 +42,7 @@ output_size = 128
 sequence_length = 256
 
 def get_inputs():
-    return [torch.randn(batch_size, input_size)]
+    return [torch.rand(batch_size, input_size)]
 
 def get_init_inputs():
     return [input_size, hidden_size, output_size]

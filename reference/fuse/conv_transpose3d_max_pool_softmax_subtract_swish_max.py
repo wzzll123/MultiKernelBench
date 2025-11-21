@@ -15,7 +15,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.conv_transpose = nn.ConvTranspose3d(in_channels, out_channels, kernel_size, stride=stride, padding=padding, output_padding=output_padding)
         self.max_pool = nn.MaxPool3d(kernel_size=pool_kernel_size, stride=pool_stride, padding=pool_padding)
-        self.subtract = nn.Parameter(torch.randn(out_channels)) # Assuming subtraction is element-wise across channels
+        self.subtract = nn.Parameter(torch.rand(out_channels)) # Assuming subtraction is element-wise across channels
 
     def forward(self, x):
         x = self.conv_transpose(x)
@@ -39,7 +39,7 @@ pool_stride = 2
 pool_padding = 0
 
 def get_inputs():
-    return [torch.randn(batch_size, in_channels, depth, height, width)]
+    return [torch.rand(batch_size, in_channels, depth, height, width)]
 
 def get_init_inputs():
     return [in_channels, out_channels, kernel_size, stride, padding, output_padding, pool_kernel_size, pool_stride, pool_padding]

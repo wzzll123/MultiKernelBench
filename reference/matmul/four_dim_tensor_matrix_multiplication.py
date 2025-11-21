@@ -37,8 +37,8 @@ l = 256
 k = 768
 
 def get_inputs():
-    A = torch.randn(b, i, j, l)
-    B = torch.randn(l, k)
+    A = torch.rand(b, i, j, l)
+    B = torch.rand(l, k)
     return [A, B]
 
 def get_init_inputs():

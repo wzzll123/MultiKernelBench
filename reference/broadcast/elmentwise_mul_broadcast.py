@@ -9,8 +9,8 @@ class Model(nn.Module):
         return a * b  # broadcast multiply
 
 def get_inputs():
-    a = torch.randn(4, 1, 2048)
-    b = torch.randn(1, 4, 2048)
+    a = torch.rand(4, 1, 2048)
+    b = torch.rand(1, 4, 2048)
     return [a, b]
 
 def get_init_inputs():

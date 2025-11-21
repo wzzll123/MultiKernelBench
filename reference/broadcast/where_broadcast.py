@@ -10,8 +10,8 @@ class Model(nn.Module):
 
 def get_inputs():
     cond = torch.randint(0, 2, (1, 512, 1), dtype=torch.bool)
-    x = torch.randn(64, 512, 64)
-    y = torch.randn(64, 512, 64)
+    x = torch.rand(64, 512, 64)
+    y = torch.rand(64, 512, 64)
     return [cond, x, y]
 
 def get_init_inputs():

@@ -18,8 +18,8 @@ len_q, len_kv = 64, 128
 d_model = 512
 
 def get_inputs():
-    q = torch.randn(batch_size, len_q, d_model)
-    kv = torch.randn(batch_size, len_kv, d_model)
+    q = torch.rand(batch_size, len_q, d_model)
+    kv = torch.rand(batch_size, len_kv, d_model)
     return [q, kv]
 
 def get_init_inputs():

@@ -7,7 +7,7 @@ class Model(nn.Module):
     """
     def __init__(self, input_size, hidden_size, scaling_factor):
         super(Model, self).__init__()
-        self.weight = nn.Parameter(torch.randn(hidden_size, input_size))
+        self.weight = nn.Parameter(torch.rand(hidden_size, input_size))
         self.scaling_factor = scaling_factor
 
     def forward(self, x):
@@ -30,7 +30,7 @@ hidden_size = 20
 scaling_factor = 1.5
 
 def get_inputs():
-    return [torch.randn(batch_size, input_size)]
+    return [torch.rand(batch_size, input_size)]
 
 def get_init_inputs():
     return [input_size, hidden_size, scaling_factor]

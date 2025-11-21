@@ -13,8 +13,8 @@ class Model(nn.Module):
         return param
 
 def get_inputs():
-    param = torch.randn(1024, 4096)
-    grad = torch.randn_like(param)
+    param = torch.rand(1024, 4096)
+    grad = torch.rand_like(param)
     accum = torch.zeros_like(param)
     return [param, grad, accum]
 

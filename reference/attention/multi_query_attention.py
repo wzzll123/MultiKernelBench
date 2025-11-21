@@ -34,7 +34,7 @@ class Model(nn.Module):
 batch_size, seq_len, d_model, num_heads = 2, 4096, 4096, 32
 
 def get_inputs():
-    x = torch.randn(batch_size, seq_len, d_model)
+    x = torch.rand(batch_size, seq_len, d_model)
     return [x]
 
 def get_init_inputs():

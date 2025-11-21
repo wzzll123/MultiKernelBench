@@ -37,7 +37,7 @@ hidden_layer_sizes = [2000, 2000]  # Example of deep and narrow layers
 output_size = 10
 
 def get_inputs():
-    return [torch.randn(batch_size, input_size)]
+    return [torch.rand(batch_size, input_size)]
 
 def get_init_inputs():
     return [input_size, hidden_layer_sizes, output_size]

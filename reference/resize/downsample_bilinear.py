@@ -6,7 +6,7 @@ class Model(nn.Module):
         return F.interpolate(x, size=(60, 80), mode='bilinear', align_corners=False)
 
 def get_inputs():
-    x = torch.randn(4, 128, 240, 320)
+    x = torch.rand(4, 128, 240, 320)
     return [x]
 
 def get_init_inputs():

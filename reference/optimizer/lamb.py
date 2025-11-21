@@ -14,9 +14,9 @@ class Model(nn.Module):
         return param
 
 def get_inputs():
-    param = torch.randn(512, 4096)
-    m = torch.randn_like(param)
-    v = torch.abs(torch.randn_like(param)) + 1e-3
+    param = torch.rand(512, 4096)
+    m = torch.rand_like(param)
+    v = torch.abs(torch.rand_like(param)) + 1e-3
     return [param, m, v]
 
 def get_init_inputs():

@@ -8,7 +8,7 @@ class Model(nn.Module):
         return F.grid_sample(x_up, grid, mode='bilinear', align_corners=False)
 
 def get_inputs():
-    x = torch.randn(2, 64, 64, 64)
+    x = torch.rand(2, 64, 64, 64)
     theta = torch.tensor([[[1.0, 0, 0], [0, 1.0, 0]]] * 2)
     return [x, theta]
 

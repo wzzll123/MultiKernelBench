@@ -13,8 +13,8 @@ class Model(nn.Module):
         return param
 
 def get_inputs():
-    param = torch.randn(1024, 4096)
-    grad = torch.randn(1024, 4096)
+    param = torch.rand(1024, 4096)
+    grad = torch.rand(1024, 4096)
     velocity = torch.zeros_like(param)
     return [param, grad, velocity]
 

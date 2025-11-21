@@ -40,7 +40,7 @@ seq_len = 128
 d_model = 512
 
 def get_inputs():
-    x = torch.randn(batch_size, seq_len, d_model)
+    x = torch.rand(batch_size, seq_len, d_model)
     return [x]
 
 def get_init_inputs():
