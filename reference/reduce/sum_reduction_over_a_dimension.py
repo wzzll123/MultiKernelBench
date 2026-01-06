@@ -29,7 +29,7 @@ class Model(nn.Module):
 
 batch_size = 128
 dim1 = 4096
-dim2 = 4095
+dim2 = 4096
 reduce_dim = 1
 
 def get_inputs():
