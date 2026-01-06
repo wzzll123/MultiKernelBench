@@ -25,7 +25,7 @@ class Model(nn.Module):
         x = x * self.scaling_factor
         return x
 
-batch_size = 128
+batch_size = 32
 in_channels = 32
 out_channels = 64
 D, H, W = 16, 32, 32

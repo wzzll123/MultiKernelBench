@@ -30,7 +30,7 @@ class Model(nn.Module):
         return torch.einsum("bijl,lk->bijk", A, B)
 
 # Test code
-b = 16
+b = 8
 i = 256
 j = 512
 l = 256

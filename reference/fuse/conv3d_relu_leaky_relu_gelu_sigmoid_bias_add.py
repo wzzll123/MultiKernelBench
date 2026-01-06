@@ -8,7 +8,7 @@ class Model(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, bias_shape):
         super(Model, self).__init__()
         self.conv = nn.Conv3d(in_channels, out_channels, kernel_size)
-        self.bias = nn.Parameter(torch.rand(bias_shape)) 
+        self.bias = nn.Parameter(torch.randn(bias_shape)) 
 
     def forward(self, x):
         x = self.conv(x)
@@ -19,10 +19,10 @@ class Model(nn.Module):
         x = x + self.bias
         return x
 
-batch_size = 128
-in_channels = 3
-out_channels = 16
-depth, height, width = 16, 32, 32
+batch_size = 64
+in_channels = 8
+out_channels = 32
+depth, height, width = 32, 64, 64
 kernel_size = 3
 bias_shape = (out_channels, 1, 1, 1)
 

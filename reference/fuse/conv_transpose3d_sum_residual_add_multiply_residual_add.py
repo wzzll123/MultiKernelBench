@@ -9,7 +9,7 @@ class Model(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding, output_padding, bias_shape):
         super(Model, self).__init__()
         self.conv_transpose = nn.ConvTranspose3d(in_channels, out_channels, kernel_size, stride=stride, padding=padding, output_padding=output_padding)
-        self.bias = nn.Parameter(torch.rand(bias_shape))
+        self.bias = nn.Parameter(torch.randn(bias_shape))
 
     def forward(self, x):
         x = self.conv_transpose(x)

@@ -8,7 +8,7 @@ class Model(nn.Module):
     def __init__(self, in_features, out_features, num_groups, bias_shape):
         super(Model, self).__init__()
         self.matmul = nn.Linear(in_features, out_features)
-        self.bias = nn.Parameter(torch.rand(bias_shape))
+        self.bias = nn.Parameter(torch.randn(bias_shape))
         self.group_norm = nn.GroupNorm(num_groups, out_features)
 
     def forward(self, x):
@@ -24,10 +24,10 @@ class Model(nn.Module):
         x = self.group_norm(x)
         return x
 
-batch_size = 128
-in_features = 512
-out_features = 1024
-num_groups = 32
+batch_size = 32768
+in_features = 1024
+out_features = 4096
+num_groups = 64
 bias_shape = (out_features,)
 
 def get_inputs():

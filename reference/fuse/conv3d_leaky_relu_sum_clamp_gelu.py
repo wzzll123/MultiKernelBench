@@ -8,7 +8,7 @@ class Model(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, sum_tensor_shape):
         super(Model, self).__init__()
         self.conv = nn.Conv3d(in_channels, out_channels, kernel_size)
-        self.sum_tensor = nn.Parameter(torch.rand(sum_tensor_shape))
+        self.sum_tensor = nn.Parameter(torch.randn(sum_tensor_shape))
 
     def forward(self, x):
         x = self.conv(x)
@@ -19,9 +19,9 @@ class Model(nn.Module):
         return x
 
 batch_size = 128
-in_channels = 3
-out_channels = 16
-depth, height, width = 16, 32, 32
+in_channels = 8
+out_channels = 64
+depth, height, width = 16, 64, 64
 kernel_size = 3
 sum_tensor_shape = (out_channels, 1, 1, 1)
 

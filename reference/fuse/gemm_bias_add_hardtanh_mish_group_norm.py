@@ -8,7 +8,7 @@ class Model(nn.Module):
     def __init__(self, in_features, out_features, bias_shape, num_groups):
         super(Model, self).__init__()
         self.gemm = nn.Linear(in_features, out_features)
-        self.bias = nn.Parameter(torch.rand(bias_shape))
+        self.bias = nn.Parameter(torch.randn(bias_shape))
         self.hardtanh = nn.Hardtanh()
         self.mish = nn.Mish()
         self.groupnorm = nn.GroupNorm(num_groups=num_groups, num_channels=out_features)
@@ -28,11 +28,11 @@ class Model(nn.Module):
         return x
 
 
-batch_size = 128
-in_features = 512
-out_features = 1024
+batch_size = 1024
+in_features = 8192
+out_features = 8192
 bias_shape = (out_features,)
-num_groups = 32
+num_groups = 256
 
 def get_inputs():
     return [torch.rand(batch_size, in_features)]

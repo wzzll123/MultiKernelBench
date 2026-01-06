@@ -9,7 +9,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.matmul = nn.Linear(in_features, out_features)
         self.bn = nn.BatchNorm1d(out_features, eps=bn_eps, momentum=bn_momentum)
-        self.bias = nn.Parameter(torch.rand(bias_shape))
+        self.bias = nn.Parameter(torch.randn(bias_shape))
         self.divide_value = divide_value
 
     def forward(self, x):
@@ -20,9 +20,9 @@ class Model(nn.Module):
         x = x * torch.sigmoid(x)
         return x
 
-batch_size = 128
-in_features = 1024
-out_features = 512
+batch_size = 1024
+in_features = 8192
+out_features = 8192
 bn_eps = 1e-5
 bn_momentum = 0.1
 bias_shape = (1,)

@@ -37,10 +37,10 @@ class Model(nn.Module):
         clusters = cluster_size + ghost_clusters
 
         # The `clusters` weights are the `(w,b)` in the paper
-        self.clusters = nn.Parameter(init_sc * th.rand(feature_size, clusters))
+        self.clusters = nn.Parameter(init_sc * th.randn(feature_size, clusters))
         self.batch_norm = nn.BatchNorm1d(clusters)
         # The `clusters2` weights are the visual words `c_k` in the paper
-        self.clusters2 = nn.Parameter(init_sc * th.rand(1, feature_size, cluster_size))
+        self.clusters2 = nn.Parameter(init_sc * th.randn(1, feature_size, cluster_size))
         self.out_dim = self.cluster_size * feature_size
 
     def forward(self, x, mask=None):
@@ -85,7 +85,7 @@ class Model(nn.Module):
         vlad = F.normalize(vlad)
         return vlad  # B x DK
 
-batch_size = 32
+batch_size = 2048
 num_features = 100
 num_clusters = 32
 feature_size = 512
