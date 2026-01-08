@@ -27,7 +27,7 @@ class Model(nn.Module):
         """
         return self.inorm(x)
 
-batch_size = 112  # heavier workload
+batch_size = 128
 features = 64
 dim1 = 512
 dim2 = 512

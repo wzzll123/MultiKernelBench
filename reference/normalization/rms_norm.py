@@ -33,7 +33,7 @@ class Model(nn.Module):
         # Normalize the input by dividing by the RMS
         return x / rms
 
-batch_size = 112
+batch_size = 128
 features = 64
 dim1 = 512
 dim2 = 512

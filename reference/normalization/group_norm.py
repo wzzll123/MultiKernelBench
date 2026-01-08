@@ -28,7 +28,7 @@ class Model(nn.Module):
         """
         return self.gn(x)
 
-batch_size = 112  # scaled up
+batch_size = 128
 features = 64
 num_groups = 8
 dim1 = 512
