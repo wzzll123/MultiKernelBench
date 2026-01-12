@@ -25,9 +25,9 @@ class Model(nn.Module):
         patch_dim = channels * patch_size ** 2
         
         self.patch_size = patch_size
-        self.pos_embedding = nn.Parameter(torch.rand(1, num_patches + 1, dim))
+        self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, dim))
         self.patch_to_embedding = nn.Linear(patch_dim, dim)
-        self.cls_token = nn.Parameter(torch.rand(1, 1, dim))
+        self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
         self.dropout = nn.Dropout(emb_dropout)
         
         self.transformer = nn.TransformerEncoder(

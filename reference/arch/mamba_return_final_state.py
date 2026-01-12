@@ -27,9 +27,9 @@ class Model(nn.Module):
         self.block_len = block_len
         
         # Initialize parameters
-        self.A = nn.Parameter(torch.rand(batch_size, seq_length, n_heads))
-        self.B = nn.Parameter(torch.rand(batch_size, seq_length, n_heads, d_state))
-        self.C = nn.Parameter(torch.rand(batch_size, seq_length, n_heads, d_state))
+        self.A = nn.Parameter(torch.randn(batch_size, seq_length, n_heads))
+        self.B = nn.Parameter(torch.randn(batch_size, seq_length, n_heads, d_state))
+        self.C = nn.Parameter(torch.randn(batch_size, seq_length, n_heads, d_state))
         
     def segsum(self, x):
         """Naive segment sum calculation."""
@@ -77,7 +77,7 @@ class Model(nn.Module):
         return new_states[:, -1]
 
 # Test parameters
-batch_size = 16
+batch_size = 2048
 seq_length = 128
 n_heads = 8
 d_head = 64

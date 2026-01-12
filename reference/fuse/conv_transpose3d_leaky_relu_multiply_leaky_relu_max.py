@@ -9,7 +9,7 @@ class Model(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding, output_padding, multiplier_shape):
         super(Model, self).__init__()
         self.conv_transpose = nn.ConvTranspose3d(in_channels, out_channels, kernel_size, stride=stride, padding=padding, output_padding=output_padding)
-        self.multiplier = nn.Parameter(torch.rand(multiplier_shape))
+        self.multiplier = nn.Parameter(torch.randn(multiplier_shape))
         self.leaky_relu = nn.LeakyReLU(negative_slope=0.2)
         self.max_pool = nn.MaxPool3d(kernel_size=2)
 

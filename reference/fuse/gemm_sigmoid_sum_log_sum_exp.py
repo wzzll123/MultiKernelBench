@@ -3,7 +3,8 @@ import torch.nn as nn
 
 class Model(nn.Module):
     """
-    Model that performs a matrix multiplication (Gemm), applies Sigmoid, sums the result, and calculates the LogSumExp.
+    Model that performs a matrix multiplication (Gemm), applies Sigmoid,
+    another Gemm, and computes LogSumExp over features.
     """
     def __init__(self, input_size, hidden_size, output_size):
         super(Model, self).__init__()
@@ -13,14 +14,14 @@ class Model(nn.Module):
     def forward(self, x):
         x = self.linear1(x)
         x = torch.sigmoid(x)
-        x = torch.sum(x, dim=1)
-        x = torch.logsumexp(x, dim=0)
+        x = self.linear2(x)
+        x = torch.logsumexp(x, dim=1)  # compute LogSumExp over features per sample
         return x
 
-batch_size = 128
-input_size = 10
-hidden_size = 20
-output_size = 5
+batch_size = 16384
+input_size = 2048
+hidden_size = 4096
+output_size = 1024
 
 def get_inputs():
     return [torch.rand(batch_size, input_size)]

@@ -10,7 +10,7 @@ class Model(nn.Module):
         self.conv_transpose = nn.ConvTranspose3d(in_channels, out_channels, kernel_size, stride=stride, padding=padding)
         self.scale1 = nn.Parameter(torch.tensor(scale1))
         self.avg_pool = nn.AvgPool3d(kernel_size=2)
-        self.bias = nn.Parameter(torch.rand(bias_shape))
+        self.bias = nn.Parameter(torch.randn(bias_shape))
         self.scale2 = nn.Parameter(torch.tensor(scale2))
 
     def forward(self, x):

@@ -9,7 +9,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size)
         self.constant_value = constant_value
-        self.bias = nn.Parameter(torch.rand(bias_shape))
+        self.bias = nn.Parameter(torch.randn(bias_shape))
         self.scaling_factor = scaling_factor
 
     def forward(self, x):
@@ -20,9 +20,9 @@ class Model(nn.Module):
         return x
 
 batch_size = 128
-in_channels = 3
-out_channels = 16
-height, width = 32, 32
+in_channels = 64
+out_channels = 128
+height = width = 128
 kernel_size = 3
 constant_value = 0.5
 bias_shape = (out_channels, 1, 1)

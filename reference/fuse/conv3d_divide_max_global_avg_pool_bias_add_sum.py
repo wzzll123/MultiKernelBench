@@ -12,7 +12,7 @@ class Model(nn.Module):
         self.divisor = divisor
         self.max_pool = nn.MaxPool3d(pool_size)
         self.global_avg_pool = nn.AdaptiveAvgPool3d((1, 1, 1))
-        self.bias = nn.Parameter(torch.rand(bias_shape))
+        self.bias = nn.Parameter(torch.randn(bias_shape))
         self.sum_dim = sum_dim
 
     def forward(self, x):
@@ -24,10 +24,10 @@ class Model(nn.Module):
         x = torch.sum(x, dim=self.sum_dim)
         return x
 
-batch_size = 128
-in_channels = 3
-out_channels = 16
-depth, height, width = 16, 32, 32
+batch_size   = 128  
+in_channels  = 8            
+out_channels = 16  
+depth = 16; height = width = 64 
 kernel_size = (3, 3, 3)
 divisor = 2.0
 pool_size = (2, 2, 2)

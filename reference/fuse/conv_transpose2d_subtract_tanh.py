@@ -8,7 +8,7 @@ class Model(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, bias_shape, stride=2, padding=1, output_padding=1):
         super(Model, self).__init__()
         self.conv_transpose = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride=stride, padding=padding, output_padding=output_padding)
-        self.bias = nn.Parameter(torch.rand(bias_shape)) 
+        self.bias = nn.Parameter(torch.randn(bias_shape)) 
 
     def forward(self, x):
         x = self.conv_transpose(x)
@@ -16,10 +16,10 @@ class Model(nn.Module):
         x = torch.tanh(x)
         return x
 
-batch_size = 128
-in_channels = 32
-out_channels = 16
-height, width = 16, 16
+batch_size = 32
+in_channels  = 64  
+out_channels = 64  
+height = width = 256 
 kernel_size = 4
 bias_shape = (out_channels, 1, 1)
 

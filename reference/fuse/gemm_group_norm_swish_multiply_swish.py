@@ -9,7 +9,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.gemm = nn.Linear(in_features, out_features)
         self.group_norm = nn.GroupNorm(num_groups, out_features)
-        self.multiply_weight = nn.Parameter(torch.rand(multiply_weight_shape)) 
+        self.multiply_weight = nn.Parameter(torch.randn(multiply_weight_shape)) 
 
     def forward(self, x):
         # (batch_size, in_features) -> (batch_size, out_features)
@@ -24,10 +24,10 @@ class Model(nn.Module):
         x = x * torch.sigmoid(x)
         return x
 
-batch_size = 128
-in_features = 512
-out_features = 1024
-num_groups = 16
+batch_size = 1024
+in_features = 8192
+out_features = 8192
+num_groups = 256
 multiply_weight_shape = (out_features,)
 
 def get_inputs():

@@ -21,7 +21,7 @@ class Model(nn.Module):
         x = self.gelu(x)
         return x
 
-batch_size = 128
+batch_size = 32
 in_channels = 32
 out_channels = 64
 depth, height, width = 16, 32, 32

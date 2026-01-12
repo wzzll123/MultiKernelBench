@@ -27,7 +27,7 @@ class Model(nn.Module):
         """
         return self.ln(x)
 
-batch_size = 16
+batch_size = 64
 features = 64
 dim1 = 256
 dim2 = 256

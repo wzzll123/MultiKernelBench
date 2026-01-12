@@ -210,10 +210,10 @@ dataset = {
     "swin_mlp": {
         "category": "arch"
     },
-    "ltsm_cn": {
+    "lstm_cn": {
         "category": "arch"
     },
-    "ltsm_hn": {
+    "lstm_hn": {
         "category": "arch"
     },
     "vision_transformer": {
@@ -270,7 +270,7 @@ dataset = {
     "efficientnet_b0": {
         "category": "arch"
     },
-    "ltsm_bidirectional": {
+    "lstm_bidirectional": {
         "category": "arch"
     },
     "deep_narrow_mlp": {
@@ -282,7 +282,7 @@ dataset = {
     "resnet18": {
         "category": "arch"
     },
-    "ltsm": {
+    "lstm": {
         "category": "arch"
     },
     "vanilla_rnn_hidden": {
