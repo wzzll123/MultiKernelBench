@@ -44,7 +44,7 @@ def execute_template(synchronize, device, context):
                 feedback = None
                 if ref_output.shape != new_output.shape:
                     feedback = f"[FAIL] Output shape mismatch: Expected {ref_output.shape}, got {new_output.shape}"
-                elif not torch.allclose(ref_output, new_output, atol=1e-02, rtol=1e-02):
+                elif not torch.allclose(ref_output, new_output, atol=1e-04, rtol=1e-04):
                     feedback = f"[FAIL] Output mismatch"
                 if feedback is not None:
                     correctness = False
