@@ -3,6 +3,8 @@ import os
 # path
 project_root_path = os.getcwd()
 ref_impl_base_path = f'{project_root_path}/reference'
+# Virtual include path placeholder for Catlass backend.
+catlass_include_path = "/virtual/path/to/catlass/include"
 
 # trial
 max_turn = 1
@@ -26,5 +28,3 @@ arch_list_xpu = ['dg2']
 op_engineer_dir = f'{project_root_path}/ascend_op_projects'
 deploy_path = f'{op_engineer_dir}/opp'
 ascendc_device = 'ai_core-Ascend910B2'
-
-
