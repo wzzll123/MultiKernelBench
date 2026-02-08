@@ -5,9 +5,40 @@ from config import op_engineer_dir, deploy_path, ascendc_device, project_root_pa
 from utils.utils import underscore_to_pascalcase
 
 
+def _inject_kernel_include_paths(target_directory, include_paths):
+    if not include_paths:
+        return
+
+    cmake_path = os.path.join(target_directory, "op_kernel", "CMakeLists.txt")
+    if not os.path.exists(cmake_path):
+        return
+
+    with open(cmake_path, "r") as f:
+        cmake_src = f.read()
+
+    include_lines = []
+    for include_path in include_paths:
+        if not include_path:
+            continue
+        include_line = f"add_ops_compile_options(ALL OPTIONS -I{include_path})"
+        if include_line not in cmake_src:
+            include_lines.append(include_line)
+
+    if not include_lines:
+        return
+
+    injected = "\n".join(include_lines)
+    if "add_kernels_compile()" in cmake_src:
+        cmake_src = cmake_src.replace("add_kernels_compile()", f"{injected}\nadd_kernels_compile()", 1)
+    else:
+        cmake_src = f"{cmake_src.rstrip()}\n{injected}\n"
+
+    with open(cmake_path, "w") as f:
+        f.write(cmake_src)
 
 
-def ascend_compile(generated_code, op, context):
+
+def ascend_compile(generated_code, op, context, extra_kernel_include_paths=None):
     op = op + '_custom'
     op_capital=underscore_to_pascalcase(op)
     target_directory=os.path.join(op_engineer_dir, op_capital)
@@ -43,6 +74,8 @@ def ascend_compile(generated_code, op, context):
 
     with open(os.path.join(target_directory, 'op_host', f'{op}.cpp'), 'w') as f:
         f.write(context.get('host_operator_src'))
+
+    _inject_kernel_include_paths(target_directory, extra_kernel_include_paths)
 
     with open(os.path.join(target_directory, 'op_kernel', f'{op}.cpp'), 'w') as f:
         f.write(context.get('kernel_src'))
