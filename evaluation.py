@@ -24,19 +24,13 @@ def eval_all(out_dir, language, categories, op_tested=dataset.keys()):
             tf_input.write(response_txt)
             tf_input.flush()
             try:
-                captured_text = subprocess.run(
+                subprocess.run(
                     ['python3', 'eval_single_runner.py', tf_input.name, op, language, tf_output.name],
                     check=True,
-                    capture_output=True,     # capture stdout and stderr
-                    text=True,               # decode bytes to str
+                    text=True,
                     timeout=180
                 )
                 result_item = json.load(tf_output)
-                if not result_item['compiled']:
-                    detailed_compiler_error = (
-                        '\n[STDOUT]\n' + captured_text.stdout + '\n[STDERR]\n' + captured_text.stderr
-                    )
-                    result_item['compile_info'] += detailed_compiler_error
 
             except subprocess.CalledProcessError as e:
                 if 'FileNotFoundError' in e.stderr:
@@ -49,19 +43,11 @@ def eval_all(out_dir, language, categories, op_tested=dataset.keys()):
                     continue
                 else:
                     print("[FAIL] unknown error, please report or fix bug")
-                    print('[STDOUT]')
-                    print(e.stdout)
-                    print('[STDERR]')
-                    print(e.stderr)
                     unknown_result = {'compiled': True, 'correctness': False, 'performance': None, 'correctness_info': 'Unknown fault'} 
                     result[op] = unknown_result
                     continue
             except subprocess.TimeoutExpired as e:
                 print("[FAIL] run timeout")
-                print('[STDOUT]')
-                print(e.stdout)
-                print('[STDERR]')
-                print(e.stderr)
                 time_result = {'compiled': True, 'correctness': False, 'performance': None, 'correctness_info': 'Timeout fault'} 
                 result[op] = time_result
                 continue
