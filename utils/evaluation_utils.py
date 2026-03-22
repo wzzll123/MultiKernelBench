@@ -43,7 +43,7 @@ def eval_single(response_txt:str, op, language):
     
     hardware = backend.get_hardware_name()
 
-    result = {'compiled': False, 'correctness': None, 'performance': None, 'hardware':hardware}
+    result = {'compiled': False, 'correctness': False, 'performance': None, 'hardware':hardware}
     generated_code = extract_first_code(response_txt, ['python', 'cpp'])
     if generated_code is None:
         generated_code = response_txt
