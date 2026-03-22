@@ -98,3 +98,21 @@ To integrate a new backend, follow these steps:
 
 This project uses code from [KernelBench](https://github.com/ScalingIntelligence/KernelBench), licensed under the MIT License.
 
+
+
+## Agent Evaluation (Directory Workflow)
+
+For coding-agent style evaluation (e.g., opencode/claudecode/qwen code), use the workspace workflow in `scripts/agent_eval/`:
+
+```bash
+# 1) Prepare isolated tasks
+python scripts/agent_eval/prepare_workspaces.py --language cuda --categories activation --workspace-root experiment/tasks --clean --readonly
+
+# 2) Launch agent CLI (example)
+python scripts/agent_eval/launch_agent.py --workspace-root experiment/tasks --agent-cmd 'qwen -p "{prompt}"' --timeout 1200 --max-tasks 10
+
+# 3) Aggregate task results
+python scripts/agent_eval/collect_results.py --workspace-root experiment/tasks --out-json experiment/outputs/agent_summary.json --out-csv experiment/outputs/agent_summary.csv
+```
+
+See `scripts/agent_eval/README.md` for details.
