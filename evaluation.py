@@ -32,16 +32,10 @@ def eval_all(out_dir, language, categories, op_tested=dataset.keys()):
                     timeout=180
                 )
                 result_item = json.load(tf_output)
-                detailed_compiler_error = '\n'
                 if not result_item['compiled']:
-                    for line in captured_text.stdout.split('\n'):
-                        if '[ERROR]' in line or 'error:' in line:
-                            detailed_compiler_error += line
-                            detailed_compiler_error += '\n'
-                    for line in captured_text.stderr.split('\n'):
-                        if '[ERROR]' in line or 'error:' in line:
-                            detailed_compiler_error += line
-                            detailed_compiler_error += '\n'
+                    detailed_compiler_error = (
+                        '\n[STDOUT]\n' + captured_text.stdout + '\n[STDERR]\n' + captured_text.stderr
+                    )
                     result_item['compile_info'] += detailed_compiler_error
 
             except subprocess.CalledProcessError as e:
@@ -50,18 +44,25 @@ def eval_all(out_dir, language, categories, op_tested=dataset.keys()):
                     break
                 elif e.returncode == -11:
                     print("[FAIL] Segmentation fault" )
-                    seg_result = {'compiled': True, 'correctness': None, 'performance': None, 'correctness_info': 'Segmentation fault'} 
+                    seg_result = {'compiled': True, 'correctness': False, 'performance': None, 'correctness_info': 'Segmentation fault'} 
                     result[op] = seg_result
                     continue
                 else:
                     print("[FAIL] unknown error, please report or fix bug")
+                    print('[STDOUT]')
+                    print(e.stdout)
+                    print('[STDERR]')
                     print(e.stderr)
-                    unknown_result = {'compiled': True, 'correctness': None, 'performance': None, 'correctness_info': 'Unknown fault'} 
+                    unknown_result = {'compiled': True, 'correctness': False, 'performance': None, 'correctness_info': 'Unknown fault'} 
                     result[op] = unknown_result
                     continue
             except subprocess.TimeoutExpired as e:
                 print("[FAIL] run timeout")
-                time_result = {'compiled': True, 'correctness': None, 'performance': None, 'correctness_info': 'Timeout fault'} 
+                print('[STDOUT]')
+                print(e.stdout)
+                print('[STDERR]')
+                print(e.stderr)
+                time_result = {'compiled': True, 'correctness': False, 'performance': None, 'correctness_info': 'Timeout fault'} 
                 result[op] = time_result
                 continue
             result[op] = result_item

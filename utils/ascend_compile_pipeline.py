@@ -5,6 +5,10 @@ from config import op_engineer_dir, deploy_path, ascendc_device, project_root_pa
 from utils.utils import underscore_to_pascalcase
 
 
+def _format_subprocess_output(stdout, stderr):
+    return f"[STDOUT]\n{stdout or ''}\n[STDERR]\n{stderr or ''}"
+
+
 def _inject_kernel_include_paths(target_directory, include_paths):
     if not include_paths:
         return
@@ -62,10 +66,9 @@ def ascend_compile(generated_code, op, context, extra_kernel_include_paths=None)
         print("[INFO] Create operator project succeeded")
     except subprocess.CalledProcessError as e:
         print("[INFO] Create operator project failed!")
-        # print("Exit Code:", e.returncode)
-        print("Error Output:\n", e.stdout)
-        print("Error Output:\n", e.stderr)
-        feedback = f'Exit Code: {e.returncode}\nError Output:\n{e.stdout}'
+        error_output = _format_subprocess_output(e.stdout, e.stderr)
+        print(error_output)
+        feedback = f'Exit Code: {e.returncode}\nError Output:\n{error_output}'
         raise Exception(feedback) 
 
     # write code to specific location
@@ -92,17 +95,8 @@ def ascend_compile(generated_code, op, context, extra_kernel_include_paths=None)
         print("[INFO] Build succeeded")
     except subprocess.CalledProcessError as e:
         print("[INFO] Build failed!")
-        error_output = ''
-        for line in e.stdout.split('\n'):
-            if '[ERROR]' in line or 'error:' in line:
-                print(line)
-                error_output += line
-                error_output += '\n'
-        for line in e.stderr.split('\n'):
-            if '[ERROR]' in line or 'error:' in line:
-                print(line)
-                error_output += line
-                error_output += '\n'
+        error_output = _format_subprocess_output(e.stdout, e.stderr)
+        print(error_output)
         feedback = f'Exit Code: {e.returncode}\nError Output:\n{error_output}'
         raise Exception(feedback)
 
@@ -116,7 +110,9 @@ def ascend_compile(generated_code, op, context, extra_kernel_include_paths=None)
         print("[INFO] Deploy succeeded")
     except subprocess.CalledProcessError as e:
         print("[INFO] Deploy failed!")
-        feedback = f'Exit Code: {e.returncode}\nError Output:\n{e.stdout}'
+        error_output = _format_subprocess_output(e.stdout, e.stderr)
+        print(error_output)
+        feedback = f'Exit Code: {e.returncode}\nError Output:\n{error_output}'
         raise Exception(feedback)
 
 
@@ -129,7 +125,9 @@ def ascend_compile(generated_code, op, context, extra_kernel_include_paths=None)
     except subprocess.CalledProcessError as e:
         # Print error if build.sh fails
         print("[INFO] Pybind failed!")
-        feedback = f'Exit Code: {e.returncode}\nError Output:\n{e.stdout}'
+        error_output = _format_subprocess_output(e.stdout, e.stderr)
+        print(error_output)
+        feedback = f'Exit Code: {e.returncode}\nError Output:\n{error_output}'
         raise Exception(feedback)
 
     # Update ASCEND_CUSTOM_OPP_PATH
