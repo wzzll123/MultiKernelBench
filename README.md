@@ -2,6 +2,31 @@
 
 A benchmark for evaluating LLMs' ability to generate kernels for various platform. Now supporting CUDA and triton kernels for GPUs, Ascendc and TileLang kernels for NPUs, pallas kernels for TPUs and SYCL kernels for Intel GPUs.
 
+## Directory Structure
+
+```text
+MultiKernelBench/
+├── ascend_op_projects/     # Ascend operator projects and extensions
+├── backends/               # Backend implementations (cuda, triton, ascendc, pallas, sycl, etc.)
+├── prompt_generators/      # Prompt strategy implementations
+├── prompts/                # Prompt templates and related resources
+├── reference/              # PyTorch reference implementations used for correctness checks
+│   ├── activation/
+│   ├── attention/
+│   ├── convolution/
+│   ├── matmul/
+│   └── ...
+├── utils/                  # Utility modules
+├── config.py               # Global runtime and model configuration
+├── dataset.py              # Dataset loading and task organization
+├── generate_and_write.py   # Generate kernels and write to output directory
+├── generate_baseline_statistics.py  # Generate baseline statistics across tasks/categories
+├── evaluation.py           # End-to-end evaluation entrypoint
+└── eval_single_runner.py   # Single task/category evaluation runner
+```
+
+`reference/` is organized by `category`. The `--categories` argument should use these directory names (e.g., `activation`, `attention`, `convolution`, `matmul`, etc.).
+
 ## Latest News
 - **27/10/2025** – Introduced a new task category featuring 15 attention tasks, including MQA and GQA. 
 - **08/10/2025** – Added **TileLang-Ascend backend** support for **Ascend NPUs**.  
@@ -94,31 +119,6 @@ To integrate a new backend, follow these steps:
 3. **Register the Backend**
 
    Use the `@register_backend(name)` decorator with your backend's unique name.
-
-## Directory Structure
-
-```text
-MultiKernelBench/
-├── ascend_op_projects/     # Ascend operator projects and extensions
-├── backends/               # Backend implementations (cuda, triton, ascendc, pallas, sycl, etc.)
-├── prompt_generators/      # Prompt strategy implementations
-├── prompts/                # Prompt templates and related resources
-├── reference/              # PyTorch reference implementations used for correctness checks
-│   ├── activation/
-│   ├── attention/
-│   ├── convolution/
-│   ├── matmul/
-│   └── ...
-├── utils/                  # Utility modules
-├── config.py               # Global runtime and model configuration
-├── dataset.py              # Dataset loading and task organization
-├── generate_and_write.py   # Generate kernels and write to output directory
-├── generate_baseline_statistics.py  # Generate baseline statistics across tasks/categories
-├── evaluation.py           # End-to-end evaluation entrypoint
-└── eval_single_runner.py   # Single task/category evaluation runner
-```
-
-`reference/` is organized by `category`. The `--categories` argument should use these directory names (e.g., `activation`, `attention`, `convolution`, `matmul`, etc.).
 
 ## Credits
 
