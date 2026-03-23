@@ -94,7 +94,32 @@ To integrate a new backend, follow these steps:
 3. **Register the Backend**
 
    Use the `@register_backend(name)` decorator with your backend's unique name.
+
+## Directory Structure
+
+```text
+MultiKernelBench/
+├── ascend_op_projects/     # Ascend operator projects and extensions
+├── backends/               # Backend implementations (cuda, triton, ascendc, pallas, sycl, etc.)
+├── prompt_generators/      # Prompt strategy implementations
+├── prompts/                # Prompt templates and related resources
+├── reference/              # PyTorch reference implementations used for correctness checks
+│   ├── activation/
+│   ├── attention/
+│   ├── convolution/
+│   ├── matmul/
+│   └── ...
+├── utils/                  # Utility modules
+├── config.py               # Global runtime and model configuration
+├── dataset.py              # Dataset loading and task organization
+├── generate_and_write.py   # Generate kernels and write to output directory
+├── generate_baseline_statistics.py  # Generate baseline statistics across tasks/categories
+├── evaluation.py           # End-to-end evaluation entrypoint
+└── eval_single_runner.py   # Single task/category evaluation runner
+```
+
+`reference/` is organized by `category`. The `--categories` argument should use these directory names (e.g., `activation`, `attention`, `convolution`, `matmul`, etc.).
+
 ## Credits
 
 This project uses code from [KernelBench](https://github.com/ScalingIntelligence/KernelBench), licensed under the MIT License.
-
