@@ -45,6 +45,8 @@ python scripts/agent_eval/launch_agent.py \
 
 Expected: the agent writes `final_response.txt` in each task directory.
 
+`--max-tasks` is mainly for quick smoke runs / cost control: it only runs the first N task directories (sorted by task name), so you can debug workflow on small subsets before full-scale runs.
+
 ## 3) Evaluate agent outputs externally
 
 ```bash

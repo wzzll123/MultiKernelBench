@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--timeout", type=int, default=1200, help="Per-task timeout seconds")
     parser.add_argument("--output-filename", type=str, default="final_response.txt", help="Expected agent output txt filename")
-    parser.add_argument("--max-tasks", type=int, default=None, help="Optional cap on number of tasks")
+    parser.add_argument("--max-tasks", type=int, default=None, help="Optional cap on number of tasks (useful for smoke tests / cost control)")
     parser.add_argument("--task-filter", nargs="*", default=None, help="Optional explicit task ids")
     parser.add_argument(
         "--auto-yolo",
