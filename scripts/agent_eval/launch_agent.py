@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch directory-style coding agents on prepared workspaces."""
+"""Launch directory-style coding agents on prepared minimal workspaces."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--timeout", type=int, default=1200, help="Per-task timeout seconds")
+    parser.add_argument("--output-filename", type=str, default="final_response.txt", help="Expected agent output txt filename")
     parser.add_argument("--max-tasks", type=int, default=None, help="Optional cap on number of tasks")
     parser.add_argument("--task-filter", nargs="*", default=None, help="Optional explicit task ids")
     return parser.parse_args()
@@ -47,7 +48,7 @@ def pick_task_dirs(workspace_root: Path, task_filter: list[str] | None, max_task
     return task_dirs
 
 
-def run_single_task(task_dir: Path, command_template: str, timeout: int) -> dict:
+def run_single_task(task_dir: Path, command_template: str, timeout: int, output_filename: str) -> dict:
     prompt_file = task_dir / "agent_prompt.txt"
     prompt_text = prompt_file.read_text(encoding="utf-8") if prompt_file.exists() else ""
 
@@ -85,12 +86,15 @@ def run_single_task(task_dir: Path, command_template: str, timeout: int) -> dict
         error = str(e)
 
     finished_at = time.time()
+    output_exists = (task_dir / output_filename).exists()
     return {
         "task": task_dir.name,
         "status": status,
         "returncode": returncode,
         "duration_sec": round(finished_at - started_at, 3),
         "command": command,
+        "output_filename": output_filename,
+        "output_exists": output_exists,
         "stdout_tail": stdout_tail,
         "stderr_tail": stderr_tail,
         "error": error,
@@ -108,7 +112,7 @@ def main() -> None:
     run_records = []
     for task_dir in task_dirs:
         print(f"[INFO] Running agent on {task_dir.name}")
-        record = run_single_task(task_dir, args.agent_cmd, args.timeout)
+        record = run_single_task(task_dir, args.agent_cmd, args.timeout, args.output_filename)
         run_records.append(record)
 
         run_record_path = task_dir / "agent_run.json"
@@ -117,6 +121,7 @@ def main() -> None:
     summary = {
         "workspace_root": str(args.workspace_root),
         "manifest": manifest,
+        "output_filename": args.output_filename,
         "num_tasks": len(task_dirs),
         "runs": run_records,
     }

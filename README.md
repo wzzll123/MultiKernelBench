@@ -102,17 +102,20 @@ This project uses code from [KernelBench](https://github.com/ScalingIntelligence
 
 ## Agent Evaluation (Directory Workflow)
 
-For coding-agent style evaluation (e.g., opencode/claudecode/qwen code), use the workspace workflow in `scripts/agent_eval/`:
+Use the minimal directory workflow in `scripts/agent_eval/`:
+- each task directory only contains `reference.py` + `agent_prompt.txt` initially
+- agent writes final output to `final_response.txt` (MultiKernelBench-compatible text format)
+- external scripts handle launch + evaluation
 
 ```bash
 # 1) Prepare isolated tasks
 python scripts/agent_eval/prepare_workspaces.py --language cuda --categories activation --workspace-root experiment/tasks --clean --readonly
 
 # 2) Launch agent CLI (example)
-python scripts/agent_eval/launch_agent.py --workspace-root experiment/tasks --agent-cmd 'qwen -p "{prompt}"' --timeout 1200 --max-tasks 10
+python scripts/agent_eval/launch_agent.py --workspace-root experiment/tasks --agent-cmd 'qwen -p "{prompt}"' --timeout 1200 --output-filename final_response.txt --max-tasks 10
 
-# 3) Aggregate task results
-python scripts/agent_eval/collect_results.py --workspace-root experiment/tasks --out-json experiment/outputs/agent_summary.json --out-csv experiment/outputs/agent_summary.csv
+# 3) Externally evaluate generated txt outputs
+python scripts/agent_eval/collect_results.py --workspace-root experiment/tasks --language cuda --output-filename final_response.txt --out-json experiment/outputs/agent_summary.json --out-csv experiment/outputs/agent_summary.csv
 ```
 
 See `scripts/agent_eval/README.md` for details.
