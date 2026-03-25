@@ -60,8 +60,8 @@ host_operator_src="""
 
 
 namespace optiling {
-const uint32_t BLOCK_DIM = 8;
-const uint32_t TILE_NUM = 8;
+const uint32_t BLOCK_DIM = 32;
+const uint32_t TILE_NUM = 4096;
 static ge::graphStatus TilingFunc(gert::TilingContext* context)
 {
 
