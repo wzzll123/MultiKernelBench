@@ -225,6 +225,8 @@ target_link_libraries(pybind11_lib PRIVATE
   torch_python
   c10
   torch_npu
+  ascendc_runtime
+  acl_rt
   ascendcl
   platform
   register
