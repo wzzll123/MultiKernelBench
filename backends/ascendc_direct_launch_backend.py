@@ -78,6 +78,23 @@ def _find_extension_path(build_dir, module_name):
     return matches[0]
 
 
+def _unique_paths(paths):
+    unique = []
+    seen = set()
+    for path in paths:
+        if path not in seen:
+            unique.append(path)
+            seen.add(path)
+    return unique
+
+
+def _looks_like_binding_source(path):
+    try:
+        return "PYBIND11_MODULE" in path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return False
+
+
 def _format_subprocess_error(stage, cmd, cwd, error):
     return (
         f"{stage} failed\n"
@@ -319,26 +336,56 @@ class AscendCDirectLaunchBackend(Backend):
         module_name = build_spec.get("module_name", "benchmark_ops")
         kernel_sources = [_safe_rel_path(path) for path in build_spec.get("kernel_sources", [])]
         binding_sources = [_safe_rel_path(path) for path in build_spec.get("binding_sources", [])]
-        include_dirs = [_safe_rel_path(path) for path in build_spec.get("include_dirs", ["kernel"])]
+        include_dirs = [_safe_rel_path(path) for path in build_spec.get("include_dirs", [])]
+        source_paths = [
+            _safe_rel_path(source["path"])
+            for source in spec.get("sources", [])
+            if source.get("path")
+        ]
+        cpp_sources = sorted(path for path in source_paths if path.suffix in (".cpp", ".cc", ".cxx"))
+
+        if not binding_sources:
+            binding_sources = [
+                path for path in cpp_sources
+                if path.name == "pybind11.cpp" or _looks_like_binding_source(self.work_dir / path)
+            ]
+        if not binding_sources:
+            raise FileNotFoundError(
+                "Cannot infer pybind source. Add a .cpp source containing PYBIND11_MODULE "
+                "or set build.binding_sources."
+            )
 
         if not kernel_sources:
-            kernel_sources = sorted(
-                path.relative_to(self.work_dir)
-                for path in (self.work_dir / "kernel").glob("*.cpp")
-                if path.name != "pybind11.cpp"
+            binding_set = set(binding_sources)
+            kernel_sources = [path for path in cpp_sources if path not in binding_set]
+        if not kernel_sources:
+            raise FileNotFoundError(
+                "Cannot infer Ascend C kernel sources. Add non-binding .cpp files "
+                "or set build.kernel_sources."
             )
-        if not binding_sources:
-            binding_sources = [Path("kernel/pybind11.cpp")]
+
+        if not include_dirs:
+            include_dirs = _unique_paths(
+                [Path(".")]
+                + [path.parent for path in source_paths if path.parent != Path(".")]
+            )
+
+        build_dir = (
+            self.work_dir / _safe_rel_path(build_spec["build_dir"])
+            if build_spec.get("build_dir")
+            else self.work_dir / binding_sources[0].parent / "build"
+        )
 
         print(f"[ascendc_direct_launch] module: {module_name}")
         print(f"[ascendc_direct_launch] kernel sources: {', '.join(map(str, kernel_sources))}")
         print(f"[ascendc_direct_launch] binding sources: {', '.join(map(str, binding_sources))}")
+        print(f"[ascendc_direct_launch] include dirs: {', '.join(map(str, include_dirs))}")
+        print(f"[ascendc_direct_launch] build dir: {build_dir}")
 
         for rel_path in kernel_sources + binding_sources:
             if not (self.work_dir / rel_path).is_file():
                 raise FileNotFoundError(f"Missing source file: {rel_path}")
 
-        build_dir = self.work_dir / "kernel" / "build"
         cmake_dir = build_dir / "_autogen_cmake"
         cmake_dir.mkdir(parents=True, exist_ok=True)
         ascend_path = _detect_ascend_path()

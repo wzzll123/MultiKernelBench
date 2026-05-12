@@ -126,11 +126,13 @@ Required JSON shape:
 - `sources`: a list of files. Each item has `path` and `content`.
 
 Source layout guidance:
-- Include `ModelNew.py`, defining class `ModelNew(nn.Module)` with the same constructor and forward signature as Model. It may import `benchmark_ops` from `kernel/build`.
-- Include one or more Ascend C kernel source/header files under `kernel/`.
-- Include a pybind source, normally `kernel/pybind11.cpp`, that exposes the generated operators through `PYBIND11_MODULE(benchmark_ops, m)`.
-- You may split helper headers, launch wrappers, tiling helpers, and multiple kernels into additional files under `kernel/` as needed.
-- By default the backend compiles all `kernel/*.cpp` except `kernel/pybind11.cpp` as Ascend C kernel sources and uses `kernel/pybind11.cpp` as the binding source. If you need a different layout, specify it in `build.kernel_sources`, `build.binding_sources`, and `build.include_dirs`.
+- Include a model entry file, normally `ModelNew.py`, defining class `ModelNew(nn.Module)` with the same constructor and forward signature as Model.
+- Include one pybind C++ source that exposes the generated operators through `PYBIND11_MODULE(benchmark_ops, m)`.
+- Include one or more non-binding Ascend C kernel C++ sources, plus any headers/helpers they need.
+- You may choose any relative directory layout, such as `kernel/`, `ops/`, `csrc/`, `src/`, or flat files. Do not use absolute paths or `..`.
+- By default the backend infers the pybind source from `.cpp` files containing `PYBIND11_MODULE` or named `pybind11.cpp`, compiles all other `.cpp` files as Ascend C kernel sources, and adds all source directories as include directories.
+- If inference would be ambiguous, specify `build.kernel_sources`, `build.binding_sources`, `build.include_dirs`, and optionally `build.build_dir`.
+- The backend adds the extension build directory to `sys.path` before loading `ModelNew.py`, so `ModelNew.py` may simply `import benchmark_ops as _ops`.
 
 Constraints:
 - The optimized model must be named `ModelNew`.
