@@ -62,6 +62,31 @@ def _find_extension_path(build_dir, module_name):
     return matches[0]
 
 
+def _format_subprocess_error(stage, cmd, cwd, error):
+    return (
+        f"{stage} failed\n"
+        f"Command: {' '.join(cmd)}\n"
+        f"Working directory: {cwd}\n"
+        f"Exit code: {error.returncode}\n"
+        f"[STDOUT]\n{error.stdout or ''}\n"
+        f"[STDERR]\n{error.stderr or ''}"
+    )
+
+
+def _run_checked(stage, cmd, cwd, env):
+    try:
+        return subprocess.run(
+            cmd,
+            cwd=cwd,
+            env=env,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError(_format_subprocess_error(stage, cmd, cwd, error)) from error
+
+
 def _generate_cmakelists(staging_dir, build_dir, module_name, kernel_sources, binding_sources, include_dirs):
     source_lines = [str(staging_dir / src) for src in kernel_sources]
     binding_lines = [str(staging_dir / src) for src in binding_sources]
@@ -260,8 +285,8 @@ class AscendCDirectLaunchBackend(Backend):
         ]
         build_cmd = ["cmake", "--build", str(build_dir), "-j"]
 
-        subprocess.run(configure_cmd, cwd=self.work_dir, env=env, check=True, capture_output=True, text=True)
-        subprocess.run(build_cmd, cwd=self.work_dir, env=env, check=True, capture_output=True, text=True)
+        _run_checked("CMake configure", configure_cmd, cwd=self.work_dir, env=env)
+        _run_checked("CMake build", build_cmd, cwd=self.work_dir, env=env)
 
         extension_path = _find_extension_path(build_dir, module_name)
         if str(build_dir) not in sys.path:
