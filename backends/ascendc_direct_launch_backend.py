@@ -218,7 +218,6 @@ set_target_properties(pybind11_lib PROPERTIES
 )
 target_link_options(pybind11_lib PRIVATE
   -Wl,--no-as-needed
-  -Wl,--no-undefined
 )
 target_link_libraries(pybind11_lib PRIVATE
   torch
