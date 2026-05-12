@@ -125,11 +125,12 @@ Required JSON shape:
 - `build.type`: must be "ascendc_direct_launch".
 - `sources`: a list of files. Each item has `path` and `content`.
 
-Required source files:
-- `ModelNew.py`: defines class `ModelNew(nn.Module)` with the same constructor and forward signature as Model. It may import `benchmark_ops` from `kernel/build`.
-- `kernel/<op>_launch.h`: declares tiling and launch wrappers.
-- `kernel/<op>_kernel.cpp`: implements the Ascend C direct-launch kernel and host launch wrappers.
-- `kernel/pybind11.cpp`: exposes the operator through `PYBIND11_MODULE(benchmark_ops, m)`.
+Source layout guidance:
+- Include `ModelNew.py`, defining class `ModelNew(nn.Module)` with the same constructor and forward signature as Model. It may import `benchmark_ops` from `kernel/build`.
+- Include one or more Ascend C kernel source/header files under `kernel/`.
+- Include a pybind source, normally `kernel/pybind11.cpp`, that exposes the generated operators through `PYBIND11_MODULE(benchmark_ops, m)`.
+- You may split helper headers, launch wrappers, tiling helpers, and multiple kernels into additional files under `kernel/` as needed.
+- By default the backend compiles all `kernel/*.cpp` except `kernel/pybind11.cpp` as Ascend C kernel sources and uses `kernel/pybind11.cpp` as the binding source. If you need a different layout, specify it in `build.kernel_sources`, `build.binding_sources`, and `build.include_dirs`.
 
 Constraints:
 - The optimized model must be named `ModelNew`.
