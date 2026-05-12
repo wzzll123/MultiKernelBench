@@ -287,7 +287,7 @@ class AscendCDirectLaunchBackend(Backend):
         del self.context
         self.context = {}
         if self.work_dir is not None:
-            shutil.rmtree(self.work_dir, ignore_errors=True)
+            print(f"[ascendc_direct_launch] keeping build directory: {self.work_dir}")
             self.work_dir = None
         torch_npu.npu.empty_cache()
         torch_npu.npu.synchronize(device=self.device)
