@@ -133,7 +133,7 @@ Source layout guidance:
 - By default the backend infers the pybind source from `.cpp` files containing `PYBIND11_MODULE` or named `pybind11.cpp`, compiles all other `.cpp` files as Ascend C kernel sources, and adds all source directories as include directories.
 - By default the backend infers the Python extension module name from `PYBIND11_MODULE(<module_name>, m)`. If you use `TORCH_EXTENSION_NAME` or want to choose explicitly, set `build.module_name`.
 - If source or module inference would be ambiguous, specify `build.module_name`, `build.kernel_sources`, `build.binding_sources`, `build.include_dirs`, and optionally `build.build_dir`.
-- The backend adds the extension build directory to `sys.path` before loading `ModelNew.py`, so `ModelNew.py` may import the generated module by the same name used in pybind.
+- `ModelNew.py` must make the generated extension importable itself, for example by inserting its build directory into `sys.path` before importing the pybind module. The default build directory is `<pybind_source_parent>/build` unless `build.build_dir` is specified.
 
 Constraints:
 - The optimized model must be named `ModelNew`.

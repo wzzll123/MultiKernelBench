@@ -3,7 +3,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -444,8 +443,6 @@ class AscendCDirectLaunchBackend(Backend):
 
         extension_path = _find_extension_path(build_dir, module_name)
         print(f"[ascendc_direct_launch] built extension: {extension_path}")
-        if str(build_dir) not in sys.path:
-            sys.path.insert(0, str(build_dir))
         self.context["_ascendc_direct_launch_extension"] = str(extension_path)
 
     def _load_model(self, spec):
