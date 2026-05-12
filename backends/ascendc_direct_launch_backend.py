@@ -95,6 +95,23 @@ def _looks_like_binding_source(path):
         return False
 
 
+def _infer_pybind_module_name(paths):
+    names = []
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for match in re.finditer(r"PYBIND11_MODULE\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*,", text):
+            name = match.group(1)
+            if name != "TORCH_EXTENSION_NAME":
+                names.append(name)
+    names = _unique_paths(names)
+    if len(names) > 1:
+        raise ValueError(f"Multiple pybind module names found: {', '.join(names)}")
+    return names[0] if names else None
+
+
 def _format_subprocess_error(stage, cmd, cwd, error):
     return (
         f"{stage} failed\n"
@@ -223,6 +240,9 @@ target_compile_options(pybind11_lib PRIVATE
   ${{PYBIND11_INC}}
   -D_GLIBCXX_USE_CXX11_ABI=1
 )
+target_compile_definitions(pybind11_lib PRIVATE
+  TORCH_EXTENSION_NAME={module_name}
+)
 target_include_directories(pybind11_lib PRIVATE ${{COMMON_INCLUDE_DIRS}})
 target_link_directories(pybind11_lib PRIVATE
   ${{TORCH_PATH}}/lib
@@ -333,7 +353,6 @@ class AscendCDirectLaunchBackend(Backend):
 
     def _build_extension(self, spec):
         build_spec = spec.get("build", {})
-        module_name = build_spec.get("module_name", "benchmark_ops")
         kernel_sources = [_safe_rel_path(path) for path in build_spec.get("kernel_sources", [])]
         binding_sources = [_safe_rel_path(path) for path in build_spec.get("binding_sources", [])]
         include_dirs = [_safe_rel_path(path) for path in build_spec.get("include_dirs", [])]
@@ -354,6 +373,11 @@ class AscendCDirectLaunchBackend(Backend):
                 "Cannot infer pybind source. Add a .cpp source containing PYBIND11_MODULE "
                 "or set build.binding_sources."
             )
+        module_name = (
+            build_spec.get("module_name")
+            or _infer_pybind_module_name([self.work_dir / path for path in binding_sources])
+            or "benchmark_ops"
+        )
 
         if not kernel_sources:
             binding_set = set(binding_sources)

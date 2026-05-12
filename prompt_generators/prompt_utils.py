@@ -127,19 +127,20 @@ Required JSON shape:
 
 Source layout guidance:
 - Include a model entry file, normally `ModelNew.py`, defining class `ModelNew(nn.Module)` with the same constructor and forward signature as Model.
-- Include one pybind C++ source that exposes the generated operators through `PYBIND11_MODULE(benchmark_ops, m)`.
+- Include one pybind C++ source that exposes the generated operators through `PYBIND11_MODULE(<module_name>, m)` or `PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)`.
 - Include one or more non-binding Ascend C kernel C++ sources, plus any headers/helpers they need.
 - You may choose any relative directory layout, such as `kernel/`, `ops/`, `csrc/`, `src/`, or flat files. Do not use absolute paths or `..`.
 - By default the backend infers the pybind source from `.cpp` files containing `PYBIND11_MODULE` or named `pybind11.cpp`, compiles all other `.cpp` files as Ascend C kernel sources, and adds all source directories as include directories.
-- If inference would be ambiguous, specify `build.kernel_sources`, `build.binding_sources`, `build.include_dirs`, and optionally `build.build_dir`.
-- The backend adds the extension build directory to `sys.path` before loading `ModelNew.py`, so `ModelNew.py` may simply `import benchmark_ops as _ops`.
+- By default the backend infers the Python extension module name from `PYBIND11_MODULE(<module_name>, m)`. If you use `TORCH_EXTENSION_NAME` or want to choose explicitly, set `build.module_name`.
+- If source or module inference would be ambiguous, specify `build.module_name`, `build.kernel_sources`, `build.binding_sources`, `build.include_dirs`, and optionally `build.build_dir`.
+- The backend adds the extension build directory to `sys.path` before loading `ModelNew.py`, so `ModelNew.py` may import the generated module by the same name used in pybind.
 
 Constraints:
 - The optimized model must be named `ModelNew`.
 - Keep `forward` inputs and outputs compatible with the original Model.
 - Do not include tests, explanations, Markdown fences, or extra files outside the JSON.
 - Use NPU tensors and torch_npu stream APIs in the pybind layer.
-- The pybind module name must be `benchmark_ops`.
+- The pybind module name, generated shared library name, and `ModelNew.py` import must be consistent.
 """
 
 
