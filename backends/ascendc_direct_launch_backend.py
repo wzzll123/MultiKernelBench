@@ -96,6 +96,7 @@ def _generate_cmakelists(staging_dir, build_dir, module_name, kernel_sources, bi
 project(MultiKernelBenchAscendCDirectLaunch)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(SOC_VERSION "${{SOC_VERSION}}" CACHE STRING "system on chip type")
 set(ASCEND_CANN_PACKAGE_PATH "${{ASCEND_CANN_PACKAGE_PATH}}" CACHE PATH "ASCEND CANN package installation directory")
@@ -115,6 +116,11 @@ endif()
 
 include(${{ASCENDC_CMAKE_DIR}}/ascendc.cmake)
 
+if(UNIX)
+    set(SYSTEM_PREFIX ${{CMAKE_SYSTEM_PROCESSOR}}-linux)
+endif()
+set(BISHENG "${{ASCEND_CANN_PACKAGE_PATH}}/${{SYSTEM_PREFIX}}/ccec_compiler/bin/bisheng" CACHE FILEPATH "Path to Bisheng compiler")
+
 set(ASCEND_INCLUDE_DIRS
     ${{ASCEND_CANN_PACKAGE_PATH}}/include
     ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/tikcpp/include
@@ -125,20 +131,40 @@ set(ASCEND_INCLUDE_DIRS
     ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/ascendc/impl/aicore/basic_api
 )
 
-ascendc_library(kernels STATIC
+set(_SAVED_CMAKE_C_COMPILER ${{CMAKE_C_COMPILER}})
+set(_SAVED_CMAKE_CXX_COMPILER ${{CMAKE_CXX_COMPILER}})
+set(_SAVED_CMAKE_LINKER ${{CMAKE_LINKER}})
+set(_SAVED_CMAKE_CXX_FLAGS ${{CMAKE_CXX_FLAGS}})
+
+set(CMAKE_C_COMPILER ${{BISHENG}})
+set(CMAKE_CXX_COMPILER ${{BISHENG}})
+set(CMAKE_LINKER ${{BISHENG}})
+unset(CMAKE_CXX_FLAGS)
+
+set(KERNEL_COMPILE_FLAGS "--npu-arch=dav-2201 -xasc")
+set_source_files_properties(
 {_format_cmake_list(source_lines)}
+    PROPERTIES LANGUAGE CXX COMPILE_FLAGS "${{KERNEL_COMPILE_FLAGS}}"
 )
 
-ascendc_include_directories(kernels PRIVATE
+add_library(kernels_obj OBJECT
+{_format_cmake_list(source_lines)}
+)
+target_include_directories(kernels_obj PRIVATE
 {_format_cmake_list(include_lines)}
     ${{ASCEND_INCLUDE_DIRS}}
 )
 
+set(CMAKE_C_COMPILER ${{_SAVED_CMAKE_C_COMPILER}})
+set(CMAKE_CXX_COMPILER ${{_SAVED_CMAKE_CXX_COMPILER}})
+set(CMAKE_LINKER ${{_SAVED_CMAKE_LINKER}})
+set(CMAKE_CXX_FLAGS ${{_SAVED_CMAKE_CXX_FLAGS}})
+
 add_library(pybind11_lib SHARED
 {_format_cmake_list(binding_lines)}
+  $<TARGET_OBJECTS:kernels_obj>
 )
 target_link_libraries(pybind11_lib PRIVATE
-  kernels
   torch_npu
   ascendcl
   platform
