@@ -4,14 +4,14 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
+import time
 from pathlib import Path
 
 import torch
 import torch_npu
 
 from backends.backend_registry import Backend, register_backend
-from config import ascendc_device
+from config import ascendc_device, op_engineer_dir
 from utils.correctness import execute_template
 from utils.performance import time_execution_event_template
 
@@ -53,6 +53,22 @@ def _safe_rel_path(path_text):
 def _format_cmake_list(items, indent=4):
     prefix = " " * indent
     return "\n".join(f"{prefix}{item}" for item in items)
+
+
+def _sanitize_name(name):
+    sanitized = re.sub(r"[^A-Za-z0-9_.-]+", "_", name).strip("._")
+    return sanitized or "task"
+
+
+def _create_work_dir(op):
+    root = Path(op_engineer_dir) / "ascendc_direct_launch"
+    root.mkdir(parents=True, exist_ok=True)
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    work_dir = root / f"{_sanitize_name(op)}_{timestamp}_{os.getpid()}"
+    if work_dir.exists():
+        shutil.rmtree(work_dir)
+    work_dir.mkdir(parents=True)
+    return work_dir
 
 
 def _find_extension_path(build_dir, module_name):
@@ -245,7 +261,7 @@ class AscendCDirectLaunchBackend(Backend):
     def compile(self, generated_code, op):
         try:
             spec = json.loads(_strip_json_fence(generated_code))
-            self.work_dir = Path(tempfile.mkdtemp(prefix=f"mkb_ascendc_direct_{op}_"))
+            self.work_dir = _create_work_dir(op)
             print(f"[ascendc_direct_launch] staging dir: {self.work_dir}")
             self._write_sources(spec)
             self._build_extension(spec)
