@@ -217,6 +217,9 @@ target_link_directories(pybind11_lib PRIVATE
   ${{TORCH_NPU_PATH}}/lib
   ${{ASCEND_CANN_PACKAGE_PATH}}/lib64
 )
+set_target_properties(pybind11_lib PROPERTIES
+  BUILD_RPATH "${{TORCH_PATH}}/lib;${{TORCH_NPU_PATH}}/lib;${{ASCEND_CANN_PACKAGE_PATH}}/lib64"
+)
 target_link_libraries(pybind11_lib PRIVATE
   torch
   torch_cpu
@@ -228,6 +231,7 @@ target_link_libraries(pybind11_lib PRIVATE
   register
   tiling_api
   runtime
+  profapi
   m
   dl
 )
