@@ -216,6 +216,10 @@ target_link_directories(pybind11_lib PRIVATE
 set_target_properties(pybind11_lib PROPERTIES
   BUILD_RPATH "${{TORCH_PATH}}/lib;${{TORCH_NPU_PATH}}/lib;${{ASCEND_CANN_PACKAGE_PATH}}/lib64;${{ASCEND_CANN_PACKAGE_LINUX_PATH}}/lib64"
 )
+target_link_options(pybind11_lib PRIVATE
+  -Wl,--no-as-needed
+  -Wl,--no-undefined
+)
 target_link_libraries(pybind11_lib PRIVATE
   torch
   torch_cpu
