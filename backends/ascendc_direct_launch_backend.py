@@ -115,15 +115,23 @@ endif()
 
 include(${{ASCENDC_CMAKE_DIR}}/ascendc.cmake)
 
+set(ASCEND_INCLUDE_DIRS
+    ${{ASCEND_CANN_PACKAGE_PATH}}/include
+    ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/tikcpp/include
+    ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/ascendc/include/basic_api/impl
+    ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/ascendc/include/basic_api/interface
+    ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/ascendc/include/highlevel_api/impl
+    ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/ascendc/include/highlevel_api/tiling
+    ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/ascendc/impl/aicore/basic_api
+)
+
 ascendc_library(kernels STATIC
 {_format_cmake_list(source_lines)}
 )
 
 ascendc_include_directories(kernels PRIVATE
 {_format_cmake_list(include_lines)}
-    ${{ASCEND_CANN_PACKAGE_PATH}}/include
-    ${{ASCEND_CANN_PACKAGE_PATH}}/include/experiment/runtime
-    ${{ASCEND_CANN_PACKAGE_PATH}}/include/experiment/msprof
+    ${{ASCEND_INCLUDE_DIRS}}
 )
 
 add_library(pybind11_lib SHARED
@@ -132,6 +140,11 @@ add_library(pybind11_lib SHARED
 target_link_libraries(pybind11_lib PRIVATE
   kernels
   torch_npu
+  ascendcl
+  platform
+  register
+  tiling_api
+  runtime
   m
   dl
 )
@@ -148,9 +161,11 @@ execute_process(COMMAND python3 -c "import os; import torch_npu; print(os.path.d
 target_link_directories(pybind11_lib PRIVATE
   ${{TORCH_PATH}}/lib
   ${{TORCH_NPU_PATH}}/lib
+  ${{ASCEND_CANN_PACKAGE_PATH}}/lib64
 )
 target_include_directories(pybind11_lib PRIVATE
 {_format_cmake_list(include_lines)}
+  ${{ASCEND_INCLUDE_DIRS}}
   ${{TORCH_NPU_PATH}}/include
   ${{TORCH_PATH}}/include
   ${{TORCH_PATH}}/include/torch/csrc/api/include
