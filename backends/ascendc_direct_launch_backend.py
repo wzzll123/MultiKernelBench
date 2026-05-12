@@ -114,6 +114,19 @@ def _generate_cmakelists(staging_dir, build_dir, module_name, kernel_sources, bi
     source_lines = [str(staging_dir / src) for src in kernel_sources]
     binding_lines = [str(staging_dir / src) for src in binding_sources]
     include_lines = [str(staging_dir / inc) for inc in include_dirs]
+    kernel_object_paths = [
+        str(build_dir / f"kernel_obj_{idx}.o")
+        for idx, _ in enumerate(source_lines)
+    ]
+    kernel_compile_rules = "\n".join(
+        f"""add_custom_command(
+  OUTPUT "{obj}"
+  COMMAND ${{BISHENG}} --npu-arch=dav-2201 -xasc -std=c++17 -fPIC ${{KERNEL_INCLUDE_FLAGS}} -c "{src}" -o "{obj}"
+  DEPENDS "{src}"
+  VERBATIM
+)"""
+        for src, obj in zip(source_lines, kernel_object_paths)
+    )
 
     return f"""cmake_minimum_required(VERSION 3.16.0)
 project(MultiKernelBenchAscendCDirectLaunch)
@@ -178,36 +191,22 @@ set(COMMON_INCLUDE_DIRS
     ${{TORCH_PATH}}/include/torch/csrc/api/include
 )
 
-set(_SAVED_CMAKE_C_COMPILER ${{CMAKE_C_COMPILER}})
-set(_SAVED_CMAKE_CXX_COMPILER ${{CMAKE_CXX_COMPILER}})
-set(_SAVED_CMAKE_LINKER ${{CMAKE_LINKER}})
-set(_SAVED_CMAKE_CXX_FLAGS ${{CMAKE_CXX_FLAGS}})
+set(KERNEL_INCLUDE_FLAGS "")
+foreach(dir IN LISTS COMMON_INCLUDE_DIRS)
+  list(APPEND KERNEL_INCLUDE_FLAGS "-I${{dir}}")
+endforeach()
 
-set(CMAKE_C_COMPILER ${{BISHENG}})
-set(CMAKE_CXX_COMPILER ${{BISHENG}})
-set(CMAKE_LINKER ${{BISHENG}})
-unset(CMAKE_CXX_FLAGS)
+{kernel_compile_rules}
 
-set(KERNEL_COMPILE_FLAGS "--npu-arch=dav-2201 -xasc")
-set_source_files_properties(
-{_format_cmake_list(source_lines)}
-  PROPERTIES LANGUAGE CXX COMPILE_FLAGS "${{KERNEL_COMPILE_FLAGS}}"
+add_custom_target(kernels_obj DEPENDS
+{_format_cmake_list(kernel_object_paths)}
 )
-
-add_library(kernels_obj OBJECT
-{_format_cmake_list(source_lines)}
-)
-target_include_directories(kernels_obj PRIVATE ${{COMMON_INCLUDE_DIRS}})
-
-set(CMAKE_C_COMPILER ${{_SAVED_CMAKE_C_COMPILER}})
-set(CMAKE_CXX_COMPILER ${{_SAVED_CMAKE_CXX_COMPILER}})
-set(CMAKE_LINKER ${{_SAVED_CMAKE_LINKER}})
-set(CMAKE_CXX_FLAGS ${{_SAVED_CMAKE_CXX_FLAGS}})
 
 add_library(pybind11_lib SHARED
 {_format_cmake_list(binding_lines)}
-  $<TARGET_OBJECTS:kernels_obj>
+{_format_cmake_list(kernel_object_paths)}
 )
+add_dependencies(pybind11_lib kernels_obj)
 target_compile_options(pybind11_lib PRIVATE
   ${{PYBIND11_INC}}
   -D_GLIBCXX_USE_CXX11_ABI=1
