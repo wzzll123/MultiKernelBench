@@ -74,8 +74,10 @@ def _format_subprocess_error(stage, cmd, cwd, error):
 
 
 def _run_checked(stage, cmd, cwd, env):
+    print(f"[ascendc_direct_launch] {stage}: {' '.join(cmd)}")
+    print(f"[ascendc_direct_launch] cwd: {cwd}")
     try:
-        return subprocess.run(
+        result = subprocess.run(
             cmd,
             cwd=cwd,
             env=env,
@@ -83,6 +85,11 @@ def _run_checked(stage, cmd, cwd, env):
             capture_output=True,
             text=True,
         )
+        if result.stdout:
+            print(result.stdout.rstrip())
+        if result.stderr:
+            print(result.stderr.rstrip())
+        return result
     except subprocess.CalledProcessError as error:
         raise RuntimeError(_format_subprocess_error(stage, cmd, cwd, error)) from error
 
@@ -104,6 +111,11 @@ set(RUN_MODE "npu" CACHE STRING "run mode: npu")
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type Release/Debug (default Debug)" FORCE)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "{build_dir}")
 
+message(STATUS "MultiKernelBench AscendC direct launch build")
+message(STATUS "  module name: {module_name}")
+message(STATUS "  staging dir: {staging_dir}")
+message(STATUS "  build dir: {build_dir}")
+
 if(UNIX)
     set(SYSTEM_PREFIX ${{CMAKE_SYSTEM_PROCESSOR}}-linux)
 endif()
@@ -111,6 +123,7 @@ set(BISHENG "${{ASCEND_CANN_PACKAGE_PATH}}/${{SYSTEM_PREFIX}}/ccec_compiler/bin/
 if(NOT EXISTS ${{BISHENG}})
     message(FATAL_ERROR "Bisheng compiler does not exist: ${{BISHENG}}")
 endif()
+message(STATUS "  bisheng: ${{BISHENG}}")
 
 set(ASCEND_INCLUDE_DIRS
     ${{ASCEND_CANN_PACKAGE_PATH}}/include
@@ -135,6 +148,11 @@ execute_process(COMMAND python3 -m pybind11 --includes
   OUTPUT_VARIABLE PYBIND11_INC
 )
 string(REPLACE " " ";" PYBIND11_INC ${{PYBIND11_INC}})
+
+message(STATUS "  torch path: ${{TORCH_PATH}}")
+message(STATUS "  torch_npu path: ${{TORCH_NPU_PATH}}")
+message(STATUS "  kernel sources: {source_lines}")
+message(STATUS "  binding sources: {binding_lines}")
 
 set(COMMON_INCLUDE_DIRS
 {_format_cmake_list(include_lines)}
@@ -228,6 +246,7 @@ class AscendCDirectLaunchBackend(Backend):
         try:
             spec = json.loads(_strip_json_fence(generated_code))
             self.work_dir = Path(tempfile.mkdtemp(prefix=f"mkb_ascendc_direct_{op}_"))
+            print(f"[ascendc_direct_launch] staging dir: {self.work_dir}")
             self._write_sources(spec)
             self._build_extension(spec)
             self._load_model(spec)
@@ -267,6 +286,7 @@ class AscendCDirectLaunchBackend(Backend):
             target = self.work_dir / rel_path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(source.get("content", ""), encoding="utf-8")
+            print(f"[ascendc_direct_launch] wrote source: {rel_path}")
 
     def _build_extension(self, spec):
         build_spec = spec.get("build", {})
@@ -283,6 +303,10 @@ class AscendCDirectLaunchBackend(Backend):
             )
         if not binding_sources:
             binding_sources = [Path("kernel/pybind11.cpp")]
+
+        print(f"[ascendc_direct_launch] module: {module_name}")
+        print(f"[ascendc_direct_launch] kernel sources: {', '.join(map(str, kernel_sources))}")
+        print(f"[ascendc_direct_launch] binding sources: {', '.join(map(str, binding_sources))}")
 
         for rel_path in kernel_sources + binding_sources:
             if not (self.work_dir / rel_path).is_file():
@@ -322,6 +346,7 @@ class AscendCDirectLaunchBackend(Backend):
         _run_checked("CMake build", build_cmd, cwd=self.work_dir, env=env)
 
         extension_path = _find_extension_path(build_dir, module_name)
+        print(f"[ascendc_direct_launch] built extension: {extension_path}")
         if str(build_dir) not in sys.path:
             sys.path.insert(0, str(build_dir))
         self.context["_ascendc_direct_launch_extension"] = str(extension_path)
@@ -335,6 +360,7 @@ class AscendCDirectLaunchBackend(Backend):
         if not model_path.is_file():
             raise FileNotFoundError(f"Missing model entry file: {model_path_text}")
 
+        print(f"[ascendc_direct_launch] loading model entry: {entry}")
         model_src = model_path.read_text(encoding="utf-8")
         model_globals = self.context
         old_file = model_globals.get("__file__")
