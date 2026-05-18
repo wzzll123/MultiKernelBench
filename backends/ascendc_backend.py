@@ -1,6 +1,7 @@
 import torch_npu
 import torch
-from backends.backend_registry import detect_python_kernel_cheating, register_backend, Backend
+from backends.backend_registry import register_backend, Backend
+from utils.cheating_detection import detect_python_kernel_cheating
 from utils.ascend_compile_pipeline import ascend_compile
 from utils.correctness import execute_template
 from utils.performance import time_execution_event_template
