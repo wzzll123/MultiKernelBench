@@ -10,7 +10,7 @@ import torch
 import torch_npu
 
 from backends.backend_registry import Backend, register_backend
-from config import ascendc_device, op_engineer_dir
+from config import ascendc_device, ascendc_npu_arch, op_engineer_dir
 from utils.correctness import execute_template
 from utils.performance import time_execution_event_template
 
@@ -143,7 +143,15 @@ def _run_checked(stage, cmd, cwd, env):
         raise RuntimeError(_format_subprocess_error(stage, cmd, cwd, error)) from error
 
 
-def _generate_cmakelists(staging_dir, build_dir, module_name, kernel_sources, binding_sources, include_dirs):
+def _generate_cmakelists(
+    staging_dir,
+    build_dir,
+    module_name,
+    kernel_sources,
+    binding_sources,
+    include_dirs,
+    npu_arch="dav-2201",
+):
     source_lines = [str(staging_dir / src) for src in kernel_sources]
     binding_lines = [str(staging_dir / src) for src in binding_sources]
     include_lines = [str(staging_dir / inc) for inc in include_dirs]
@@ -237,7 +245,7 @@ foreach(KERNEL_SRC IN LISTS KERNEL_SOURCES)
   add_custom_command(
     OUTPUT ${{KERNEL_OBJ}}
     COMMAND ${{CMAKE_COMMAND}} -E make_directory ${{CMAKE_CURRENT_BINARY_DIR}}/kernels
-    COMMAND ${{BISHENG}} --npu-arch=dav-2201 -xasc -std=c++17 -fPIC
+    COMMAND ${{BISHENG}} --npu-arch={npu_arch} -xasc -std=c++17 -fPIC
             ${{COMMON_INCLUDE_OPTIONS}}
             -c ${{KERNEL_SRC}} -o ${{KERNEL_OBJ}}
     DEPENDS ${{KERNEL_SRC}}
@@ -427,6 +435,7 @@ class AscendCDirectLaunchBackend(Backend):
                 kernel_sources=kernel_sources,
                 binding_sources=binding_sources,
                 include_dirs=include_dirs,
+                npu_arch=ascendc_npu_arch,
             ),
             encoding="utf-8",
         )

@@ -27,4 +27,5 @@ arch_list_xpu = ['dg2']
 # Ascend compile related
 op_engineer_dir = f'{project_root_path}/ascend_op_projects'
 deploy_path = f'{op_engineer_dir}/opp'
-ascendc_device = 'ai_core-Ascend910B2'
+ascendc_device = 'ai_core-Ascend910B2'  # used for msopgen and hardware reporting
+ascendc_npu_arch = 'dav-2201'  # used for direct launch <<<>>> kernel compilation
