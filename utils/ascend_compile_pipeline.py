@@ -9,6 +9,17 @@ def _format_subprocess_output(stdout, stderr):
     return f"[STDOUT]\n{stdout or ''}\n[STDERR]\n{stderr or ''}"
 
 
+def _find_custom_opp_installer(build_out_dir):
+    installers = sorted(
+        name
+        for name in os.listdir(build_out_dir)
+        if name.startswith("custom_opp_") and name.endswith(".run")
+    )
+    if not installers:
+        raise FileNotFoundError(f"No custom_opp_*.run installer found in {build_out_dir}")
+    return os.path.join(build_out_dir, installers[0])
+
+
 def _inject_kernel_include_paths(target_directory, include_paths):
     if not include_paths:
         return
@@ -104,10 +115,16 @@ def ascend_compile(generated_code, op, context, extra_kernel_include_paths=None)
 
     try:
         print("[INFO] Begin deploy")
-        os.chdir(os.path.join(target_directory, 'build_out'))
-        # result = subprocess.run(["./custom_opp_ubuntu_aarch64.run", f'--install-path={deploy_path}'], check=True, capture_output=True, text=True)
-        result = subprocess.run(["./custom_opp_ubuntu_aarch64.run"], check=True, capture_output=True, text=True)
+        build_out_dir = os.path.join(target_directory, 'build_out')
+        os.chdir(build_out_dir)
+        installer = _find_custom_opp_installer(build_out_dir)
+        print(f"[INFO] Deploy installer: {os.path.basename(installer)}")
+        # result = subprocess.run([installer, f'--install-path={deploy_path}'], check=True, capture_output=True, text=True)
+        result = subprocess.run([installer], check=True, capture_output=True, text=True)
         print("[INFO] Deploy succeeded")
+    except FileNotFoundError as e:
+        print("[INFO] Deploy failed!")
+        raise Exception(str(e))
     except subprocess.CalledProcessError as e:
         print("[INFO] Deploy failed!")
         error_output = _format_subprocess_output(e.stdout, e.stderr)
