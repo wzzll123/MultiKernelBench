@@ -262,6 +262,7 @@ target_link_libraries(pybind11_lib PRIVATE
   platform
   register
   tiling_api
+  ascendc_runtime
   runtime
   profapi
   m
