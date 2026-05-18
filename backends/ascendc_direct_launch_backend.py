@@ -152,29 +152,31 @@ def _generate_cmakelists(staging_dir, build_dir, module_name, kernel_sources, bi
 project(MultiKernelBenchAscendCDirectLaunch)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(SOC_VERSION "${{SOC_VERSION}}" CACHE STRING "system on chip type")
 set(ASCEND_CANN_PACKAGE_PATH "${{ASCEND_CANN_PACKAGE_PATH}}" CACHE PATH "ASCEND CANN package installation directory")
-set(RUN_MODE "npu" CACHE STRING "run mode: npu")
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type Release/Debug (default Debug)" FORCE)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "{build_dir}")
 
-if(EXISTS ${{ASCEND_CANN_PACKAGE_PATH}}/tools/tikcpp/ascendc_kernel_cmake)
-    set(ASCENDC_CMAKE_DIR ${{ASCEND_CANN_PACKAGE_PATH}}/tools/tikcpp/ascendc_kernel_cmake)
-elseif(EXISTS ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/tikcpp/ascendc_kernel_cmake)
-    set(ASCENDC_CMAKE_DIR ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/tikcpp/ascendc_kernel_cmake)
-elseif(EXISTS ${{ASCEND_CANN_PACKAGE_PATH}}/ascendc_devkit/tikcpp/samples/cmake)
-    set(ASCENDC_CMAKE_DIR ${{ASCEND_CANN_PACKAGE_PATH}}/ascendc_devkit/tikcpp/samples/cmake)
+if(CMAKE_SYSTEM_PROCESSOR)
+  set(SYSTEM_PREFIX ${{CMAKE_SYSTEM_PROCESSOR}}-linux)
 else()
-    message(FATAL_ERROR "ascendc_kernel_cmake does not exist, please check whether the CANN package is installed.")
+  set(SYSTEM_PREFIX aarch64-linux)
 endif()
 
-include(${{ASCENDC_CMAKE_DIR}}/ascendc.cmake)
+if(EXISTS ${{ASCEND_CANN_PACKAGE_PATH}}/bin/bisheng)
+  set(BISHENG ${{ASCEND_CANN_PACKAGE_PATH}}/bin/bisheng)
+elseif(EXISTS ${{ASCEND_CANN_PACKAGE_PATH}}/${{SYSTEM_PREFIX}}/ccec_compiler/bin/bisheng)
+  set(BISHENG ${{ASCEND_CANN_PACKAGE_PATH}}/${{SYSTEM_PREFIX}}/ccec_compiler/bin/bisheng)
+else()
+  message(FATAL_ERROR "bisheng compiler does not exist, please check ASCEND_CANN_PACKAGE_PATH.")
+endif()
 
 message(STATUS "MultiKernelBench AscendC direct launch build")
 message(STATUS "  module name: {module_name}")
 message(STATUS "  staging dir: {staging_dir}")
 message(STATUS "  build dir: {build_dir}")
+message(STATUS "  bisheng: ${{BISHENG}}")
 
 set(ASCEND_INCLUDE_DIRS
     ${{ASCEND_CANN_PACKAGE_PATH}}/include
@@ -207,27 +209,57 @@ message(STATUS "  torch_npu path: ${{TORCH_NPU_PATH}}")
 message(STATUS "  kernel sources: {source_lines}")
 message(STATUS "  binding sources: {binding_lines}")
 
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+
 set(COMMON_INCLUDE_DIRS
 {_format_cmake_list(include_lines)}
     ${{ASCEND_INCLUDE_DIRS}}
+    ${{Python3_INCLUDE_DIRS}}
     ${{TORCH_NPU_PATH}}/include
     ${{TORCH_PATH}}/include
     ${{TORCH_PATH}}/include/torch/csrc/api/include
 )
 
-ascendc_library(kernels STATIC
+set(_SAVED_CMAKE_C_COMPILER ${{CMAKE_C_COMPILER}})
+set(_SAVED_CMAKE_CXX_COMPILER ${{CMAKE_CXX_COMPILER}})
+set(_SAVED_CMAKE_LINKER ${{CMAKE_LINKER}})
+set(_SAVED_CMAKE_CXX_FLAGS ${{CMAKE_CXX_FLAGS}})
+
+set(CMAKE_C_COMPILER ${{BISHENG}})
+set(CMAKE_CXX_COMPILER ${{BISHENG}})
+set(CMAKE_LINKER ${{BISHENG}})
+unset(CMAKE_CXX_FLAGS)
+
+set(KERNEL_COMPILE_FLAGS "--npu-arch=dav-2201 -xasc")
+set_source_files_properties(
+{_format_cmake_list(source_lines)}
+  PROPERTIES LANGUAGE CXX COMPILE_FLAGS "${{KERNEL_COMPILE_FLAGS}}"
+)
+
+add_library(kernels_obj OBJECT
 {_format_cmake_list(source_lines)}
 )
-ascendc_include_directories(kernels PRIVATE
-  ${{COMMON_INCLUDE_DIRS}}
-)
+target_include_directories(kernels_obj PRIVATE ${{COMMON_INCLUDE_DIRS}})
+
+set(CMAKE_C_COMPILER ${{_SAVED_CMAKE_C_COMPILER}})
+set(CMAKE_CXX_COMPILER ${{_SAVED_CMAKE_CXX_COMPILER}})
+set(CMAKE_LINKER ${{_SAVED_CMAKE_LINKER}})
+set(CMAKE_CXX_FLAGS ${{_SAVED_CMAKE_CXX_FLAGS}})
 
 add_library(pybind11_lib SHARED
 {_format_cmake_list(binding_lines)}
+  $<TARGET_OBJECTS:kernels_obj>
 )
 target_link_libraries(pybind11_lib PRIVATE
-  kernels
+  ${{Python3_LIBRARIES}}
+  torch
+  torch_cpu
   torch_npu
+  ascendcl
+  platform
+  register
+  tiling_api
+  runtime
   m
   dl
 )
@@ -242,9 +274,11 @@ target_include_directories(pybind11_lib PRIVATE ${{COMMON_INCLUDE_DIRS}})
 target_link_directories(pybind11_lib PRIVATE
   ${{TORCH_PATH}}/lib
   ${{TORCH_NPU_PATH}}/lib
+  ${{ASCEND_CANN_PACKAGE_PATH}}/${{SYSTEM_PREFIX}}/lib64
+  ${{ASCEND_CANN_PACKAGE_PATH}}/lib64
 )
 set_target_properties(pybind11_lib PROPERTIES
-  BUILD_RPATH "${{TORCH_PATH}}/lib;${{TORCH_NPU_PATH}}/lib"
+  BUILD_RPATH "${{TORCH_PATH}}/lib;${{TORCH_NPU_PATH}}/lib;${{ASCEND_CANN_PACKAGE_PATH}}/${{SYSTEM_PREFIX}}/lib64;${{ASCEND_CANN_PACKAGE_PATH}}/lib64"
 )
 
 execute_process(COMMAND python3 -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX') or '.so')"
