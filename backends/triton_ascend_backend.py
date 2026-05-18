@@ -7,6 +7,9 @@ import triton
 
 @register_backend('triton_ascend')
 class TritonBackend(AscendBackend):
+    def detect_cheating(self, generated_code):
+        return False, None
+
     def compile(self, generated_code, op):
         try:
             # ----- 1. stash source in linecache ------------------------------
