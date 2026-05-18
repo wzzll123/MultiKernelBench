@@ -23,5 +23,13 @@ class Backend:
         # Support both modelNew and baseline eval
         raise NotImplementedError
 
+    def detect_cheating(self, generated_code):
+        """Return (is_cheating, info) for LLM outputs that bypass custom kernels.
+
+        Backends opt in because custom-kernel entry patterns differ across
+        CUDA/Triton/Pallas/AscendC.
+        """
+        return False, None
+
     def cleanup(self):
         pass
