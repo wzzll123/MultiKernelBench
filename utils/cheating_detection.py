@@ -79,6 +79,10 @@ def _extract_model_python_code(generated_code):
         if match:
             stripped = match.group(1).strip()
 
+    model_src = _extract_string_assignment(stripped, "model_src")
+    if model_src is not None:
+        return model_src
+
     try:
         spec = json.loads(stripped)
     except json.JSONDecodeError:
@@ -100,6 +104,27 @@ def _extract_model_python_code(generated_code):
     except SyntaxError:
         return None
     return stripped
+
+
+def _extract_string_assignment(code, name):
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return None
+
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+
+        value = node.value
+        if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+            continue
+
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        for target in targets:
+            if isinstance(target, ast.Name) and target.id == name:
+                return value.value
+    return None
 
 
 def _resolve_call_name(node):
