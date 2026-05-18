@@ -9,8 +9,9 @@ from pathlib import Path
 import torch
 import torch_npu
 
-from backends.backend_registry import Backend, detect_python_kernel_cheating, register_backend
+from backends.backend_registry import Backend, register_backend
 from config import ascendc_device, ascendc_npu_arch, op_engineer_dir
+from utils.cheating_detection import detect_python_kernel_cheating
 from utils.correctness import execute_template
 from utils.performance import time_execution_event_template
 
