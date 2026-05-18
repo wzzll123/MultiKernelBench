@@ -263,6 +263,7 @@ target_link_libraries(pybind11_lib PRIVATE
   register
   tiling_api
   runtime
+  profapi
   m
   dl
 )
