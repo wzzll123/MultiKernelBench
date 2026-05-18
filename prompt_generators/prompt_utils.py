@@ -104,3 +104,89 @@ def ascendc_template(arc_src, example_arch_src, example_new_arch_src, op, exampl
         """
         prompt += ASCENDC_PROBLEM_INSTRUCTION
         return prompt
+
+
+ASCENDC_DIRECT_LAUNCH_PROBLEM_STATEMENT = """
+You are an expert in writing Ascend C direct-launch kernels and PyTorch pybind modules.
+Your task is to optimize the provided PyTorch architecture named Model by returning a single JSON submission.
+The JSON must embed all code directly in `sources[].content`.
+"""
+
+ASCENDC_DIRECT_LAUNCH_INSTRUCTION = """
+Return exactly one JSON object and no other text. Do not wrap it in Markdown.
+
+Required JSON shape:
+- `name`: solution name.
+- `author`: author or model name.
+- `problem`: the benchmark problem name.
+- `format_version`: use "0.1".
+- `description`: short description.
+- `entry.model`: must be "ModelNew.py::ModelNew".
+- `build.type`: must be "ascendc_direct_launch".
+- `sources`: a list of files. Each item has `path` and `content`.
+
+Source layout guidance:
+- Include a model entry file, normally `ModelNew.py`, defining class `ModelNew(nn.Module)` with the same constructor and forward signature as Model.
+- Include one pybind C++ source that exposes the generated operators through `PYBIND11_MODULE(<module_name>, m)` or `PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)`.
+- Include one or more non-binding Ascend C kernel C++ sources, plus any headers/helpers they need.
+- You may choose any relative directory layout, such as `kernel/`, `ops/`, `csrc/`, `src/`, or flat files. Do not use absolute paths or `..`.
+- By default the backend infers the pybind source from `.cpp` files containing `PYBIND11_MODULE` or named `pybind11.cpp`, compiles all other `.cpp` files as Ascend C kernel sources, and adds all source directories as include directories.
+- By default the backend infers the Python extension module name from `PYBIND11_MODULE(<module_name>, m)`. If you use `TORCH_EXTENSION_NAME` or want to choose explicitly, set `build.module_name`.
+- If source or module inference would be ambiguous, specify `build.module_name`, `build.kernel_sources`, `build.binding_sources`, `build.include_dirs`, and optionally `build.build_dir`.
+- `ModelNew.py` must make the generated extension importable itself, for example by inserting its build directory into `sys.path` before importing the pybind module. The default build directory is `<pybind_source_parent>/build` unless `build.build_dir` is specified.
+
+Constraints:
+- The optimized model must be named `ModelNew`.
+- Keep `forward` inputs and outputs compatible with the original Model.
+- Do not include tests, explanations, Markdown fences, or extra files outside the JSON.
+- Use NPU tensors and torch_npu stream APIs in the pybind layer.
+- The pybind module name, generated shared library name, and `ModelNew.py` import must be consistent.
+"""
+
+
+def read_direct_launch_relevant_files(op, example):
+    category = dataset[op]['category']
+    example_arch_path = os.path.join(
+        project_root_path, f"prompts/cuda_model_{example}.py"
+    )
+    example_json_path = os.path.join(
+        project_root_path, f"prompts/ascendc_direct_launch_model_{example}.json"
+    )
+    arch_path = os.path.join(
+        project_root_path, f"reference/{category}/{op}.py"
+    )
+
+    if not os.path.exists(example_arch_path):
+        raise FileNotFoundError(f"Example architecture file not found: {example_arch_path}")
+    if not os.path.exists(example_json_path):
+        raise FileNotFoundError(f"Example JSON file not found: {example_json_path}")
+    if not os.path.exists(arch_path):
+        raise FileNotFoundError(f"Architecture file not found: {arch_path}")
+
+    return read_file(arch_path), read_file(example_arch_path), read_file(example_json_path)
+
+
+def ascendc_direct_launch_template(arc_src, example_arch_src, example_json_src, op, example_op):
+    prompt = ASCENDC_DIRECT_LAUNCH_PROBLEM_STATEMENT
+    prompt += f"""
+
+Here is a one-shot example for problem `{example_op}`.
+
+Original architecture:
+```python
+{example_arch_src}
+```
+
+Expected JSON submission:
+```json
+{example_json_src}
+```
+
+Now optimize the following architecture for problem `{op}`:
+```python
+{arc_src}
+```
+
+{ASCENDC_DIRECT_LAUNCH_INSTRUCTION}
+"""
+    return prompt
