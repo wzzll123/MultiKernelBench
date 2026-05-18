@@ -149,40 +149,37 @@ def _generate_cmakelists(staging_dir, build_dir, module_name, kernel_sources, bi
     include_lines = [str(staging_dir / inc) for inc in include_dirs]
 
     return f"""cmake_minimum_required(VERSION 3.16.0)
+project(MultiKernelBenchAscendCDirectLaunch)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(SOC_VERSION "${{SOC_VERSION}}" CACHE STRING "system on chip type")
 set(ASCEND_CANN_PACKAGE_PATH "${{ASCEND_CANN_PACKAGE_PATH}}" CACHE PATH "ASCEND CANN package installation directory")
-set(CMAKE_ASC_RUN_MODE "npu" CACHE STRING "Run mode: npu, sim")
-set(CMAKE_ASC_ARCHITECTURES "dav-2201" CACHE STRING "NPU architecture")
+set(RUN_MODE "npu" CACHE STRING "run mode: npu")
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type Release/Debug (default Debug)" FORCE)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "{build_dir}")
 
-list(APPEND CMAKE_PREFIX_PATH
-  ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/tikcpp/ascendc_kernel_cmake
-  ${{ASCEND_CANN_PACKAGE_PATH}}/tools/tikcpp/ascendc_kernel_cmake
-  ${{ASCEND_CANN_PACKAGE_PATH}}/ascendc_devkit/tikcpp/samples/cmake
-)
-list(APPEND CMAKE_MODULE_PATH
-  ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/tikcpp/ascendc_kernel_cmake/asc_modules
-  ${{ASCEND_CANN_PACKAGE_PATH}}/tools/tikcpp/ascendc_kernel_cmake/asc_modules
-)
+if(EXISTS ${{ASCEND_CANN_PACKAGE_PATH}}/tools/tikcpp/ascendc_kernel_cmake)
+    set(ASCENDC_CMAKE_DIR ${{ASCEND_CANN_PACKAGE_PATH}}/tools/tikcpp/ascendc_kernel_cmake)
+elseif(EXISTS ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/tikcpp/ascendc_kernel_cmake)
+    set(ASCENDC_CMAKE_DIR ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/tikcpp/ascendc_kernel_cmake)
+elseif(EXISTS ${{ASCEND_CANN_PACKAGE_PATH}}/ascendc_devkit/tikcpp/samples/cmake)
+    set(ASCENDC_CMAKE_DIR ${{ASCEND_CANN_PACKAGE_PATH}}/ascendc_devkit/tikcpp/samples/cmake)
+else()
+    message(FATAL_ERROR "ascendc_kernel_cmake does not exist, please check whether the CANN package is installed.")
+endif()
 
-find_package(ASC REQUIRED)
-
-project(MultiKernelBenchAscendCDirectLaunch LANGUAGES ASC CXX)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+include(${{ASCENDC_CMAKE_DIR}}/ascendc.cmake)
 
 message(STATUS "MultiKernelBench AscendC direct launch build")
 message(STATUS "  module name: {module_name}")
 message(STATUS "  staging dir: {staging_dir}")
 message(STATUS "  build dir: {build_dir}")
 
-message(STATUS "  ASC compiler: ${{CMAKE_ASC_COMPILER}}")
-message(STATUS "  ASC linux path: ${{ASCEND_CANN_PACKAGE_LINUX_PATH}}")
-
 set(ASCEND_INCLUDE_DIRS
     ${{ASCEND_CANN_PACKAGE_PATH}}/include
+    ${{ASCEND_CANN_PACKAGE_PATH}}/include/experiment/runtime
+    ${{ASCEND_CANN_PACKAGE_PATH}}/include/experiment/msprof
     ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/tikcpp/include
     ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/ascendc/include/basic_api/impl
     ${{ASCEND_CANN_PACKAGE_PATH}}/compiler/ascendc/include/basic_api/interface
@@ -218,23 +215,22 @@ set(COMMON_INCLUDE_DIRS
     ${{TORCH_PATH}}/include/torch/csrc/api/include
 )
 
-set_source_files_properties(
-{_format_cmake_list(source_lines)}
-  PROPERTIES LANGUAGE ASC
-)
-add_library(kernels_obj OBJECT
+ascendc_library(kernels STATIC
 {_format_cmake_list(source_lines)}
 )
-target_compile_options(kernels_obj PRIVATE
-  $<$<COMPILE_LANGUAGE:ASC>:--npu-arch=${{CMAKE_ASC_ARCHITECTURES}}>
+ascendc_include_directories(kernels PRIVATE
+  ${{COMMON_INCLUDE_DIRS}}
 )
-target_include_directories(kernels_obj PRIVATE ${{COMMON_INCLUDE_DIRS}})
 
 add_library(pybind11_lib SHARED
 {_format_cmake_list(binding_lines)}
-  $<TARGET_OBJECTS:kernels_obj>
 )
-add_dependencies(pybind11_lib kernels_obj)
+target_link_libraries(pybind11_lib PRIVATE
+  kernels
+  torch_npu
+  m
+  dl
+)
 target_compile_options(pybind11_lib PRIVATE
   ${{PYBIND11_INC}}
   -D_GLIBCXX_USE_CXX11_ABI=1
@@ -246,37 +242,9 @@ target_include_directories(pybind11_lib PRIVATE ${{COMMON_INCLUDE_DIRS}})
 target_link_directories(pybind11_lib PRIVATE
   ${{TORCH_PATH}}/lib
   ${{TORCH_NPU_PATH}}/lib
-  ${{ASCEND_CANN_PACKAGE_PATH}}/lib64
-  ${{ASCEND_CANN_PACKAGE_LINUX_PATH}}/lib64
 )
 set_target_properties(pybind11_lib PROPERTIES
-  BUILD_RPATH "${{TORCH_PATH}}/lib;${{TORCH_NPU_PATH}}/lib;${{ASCEND_CANN_PACKAGE_PATH}}/lib64;${{ASCEND_CANN_PACKAGE_LINUX_PATH}}/lib64"
-)
-target_link_options(pybind11_lib PRIVATE
-  -Wl,--no-as-needed
-)
-target_link_libraries(pybind11_lib PRIVATE
-  torch
-  torch_cpu
-  torch_python
-  c10
-  torch_npu
-  ascendc_runtime
-  acl_rt
-  ascendcl
-  platform
-  register
-  error_manager
-  tiling_api
-  runtime
-  profapi
-  ge_common_base
-  unified_dlog
-  mmpa
-  ascend_dump
-  c_sec
-  m
-  dl
+  BUILD_RPATH "${{TORCH_PATH}}/lib;${{TORCH_NPU_PATH}}/lib"
 )
 
 execute_process(COMMAND python3 -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX') or '.so')"
