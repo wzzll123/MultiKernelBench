@@ -220,36 +220,39 @@ set(COMMON_INCLUDE_DIRS
     ${{TORCH_PATH}}/include/torch/csrc/api/include
 )
 
-set(_SAVED_CMAKE_C_COMPILER ${{CMAKE_C_COMPILER}})
-set(_SAVED_CMAKE_CXX_COMPILER ${{CMAKE_CXX_COMPILER}})
-set(_SAVED_CMAKE_LINKER ${{CMAKE_LINKER}})
-set(_SAVED_CMAKE_CXX_FLAGS ${{CMAKE_CXX_FLAGS}})
-
-set(CMAKE_C_COMPILER ${{BISHENG}})
-set(CMAKE_CXX_COMPILER ${{BISHENG}})
-set(CMAKE_LINKER ${{BISHENG}})
-unset(CMAKE_CXX_FLAGS)
-
-set(KERNEL_COMPILE_FLAGS "--npu-arch=dav-2201 -xasc")
-set_source_files_properties(
-{_format_cmake_list(source_lines)}
-  PROPERTIES LANGUAGE CXX COMPILE_FLAGS "${{KERNEL_COMPILE_FLAGS}}"
-)
-
-add_library(kernels_obj OBJECT
+set(KERNEL_SOURCES
 {_format_cmake_list(source_lines)}
 )
-target_include_directories(kernels_obj PRIVATE ${{COMMON_INCLUDE_DIRS}})
 
-set(CMAKE_C_COMPILER ${{_SAVED_CMAKE_C_COMPILER}})
-set(CMAKE_CXX_COMPILER ${{_SAVED_CMAKE_CXX_COMPILER}})
-set(CMAKE_LINKER ${{_SAVED_CMAKE_LINKER}})
-set(CMAKE_CXX_FLAGS ${{_SAVED_CMAKE_CXX_FLAGS}})
+set(COMMON_INCLUDE_OPTIONS)
+foreach(INC_DIR IN LISTS COMMON_INCLUDE_DIRS)
+  list(APPEND COMMON_INCLUDE_OPTIONS "-I${{INC_DIR}}")
+endforeach()
+
+set(KERNEL_OBJECTS)
+foreach(KERNEL_SRC IN LISTS KERNEL_SOURCES)
+  get_filename_component(KERNEL_NAME ${{KERNEL_SRC}} NAME_WE)
+  string(MD5 KERNEL_HASH ${{KERNEL_SRC}})
+  set(KERNEL_OBJ ${{CMAKE_CURRENT_BINARY_DIR}}/kernels/${{KERNEL_NAME}}_${{KERNEL_HASH}}.o)
+  add_custom_command(
+    OUTPUT ${{KERNEL_OBJ}}
+    COMMAND ${{CMAKE_COMMAND}} -E make_directory ${{CMAKE_CURRENT_BINARY_DIR}}/kernels
+    COMMAND ${{BISHENG}} --npu-arch=dav-2201 -xasc -std=c++17 -fPIC
+            ${{COMMON_INCLUDE_OPTIONS}}
+            -c ${{KERNEL_SRC}} -o ${{KERNEL_OBJ}}
+    DEPENDS ${{KERNEL_SRC}}
+    VERBATIM
+  )
+  list(APPEND KERNEL_OBJECTS ${{KERNEL_OBJ}})
+endforeach()
+set_source_files_properties(${{KERNEL_OBJECTS}} PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
+add_custom_target(kernels_obj DEPENDS ${{KERNEL_OBJECTS}})
 
 add_library(pybind11_lib SHARED
 {_format_cmake_list(binding_lines)}
-  $<TARGET_OBJECTS:kernels_obj>
+  ${{KERNEL_OBJECTS}}
 )
+add_dependencies(pybind11_lib kernels_obj)
 target_link_libraries(pybind11_lib PRIVATE
   ${{Python3_LIBRARIES}}
   torch
