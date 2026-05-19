@@ -1,27 +1,28 @@
 import os
+import textwrap
 from config import project_root_path
 from dataset import dataset
 from utils.utils import read_file, underscore_to_pascalcase
 
-template_statement="""You write custom {} kernels to replace the pytorch operators in the given architecture to get speedups. \n
-    You have complete freedom to choose the set of operators you want to replace. You may make the decision to replace some operators with custom {} kernels and leave others unchanged. You may replace multiple operators with custom implementations, consider operator fusion opportunities (combining multiple operators into a single kernel, for example, combining matmul+relu), or algorithmic changes (such as online softmax). You are only limited by your imagination.\n
+template_statement="""You write custom {} kernels to replace the pytorch operators in the given architecture to get speedups.
+
+You have complete freedom to choose the set of operators you want to replace. You may make the decision to replace some operators with custom {} kernels and leave others unchanged. You may replace multiple operators with custom implementations, consider operator fusion opportunities (combining multiple operators into a single kernel, for example, combining matmul+relu), or algorithmic changes (such as online softmax). You are only limited by your imagination.
 """
-template_instruction="""
-Optimize the architecture named Model with custom {} operators! Name your optimized output architecture ModelNew. Output the new code in codeblocks. Please generate real code, NOT pseudocode, make sure the code compiles and is fully functional. Just output the new model code, no other text, and NO testing code! \n
+template_instruction="""Optimize the architecture named Model with custom {} operators! Name your optimized output architecture ModelNew. Output the new code in codeblocks. Please generate real code, NOT pseudocode, make sure the code compiles and is fully functional. Just output the new model code, no other text, and NO testing code!
 """
 
-template_example_intro='''
-Here's an example to show you the syntax of inline embedding custom {} operators in torch: The example given architecture is:
-'''
+template_example_intro="""Here's an example to show you the syntax of inline embedding custom {} operators in torch. The example given architecture is:"""
 
-template_new_arch_intro='''
-The example new arch with custom {} kernels looks like this:
-'''
+template_new_arch_intro="""The example new arch with custom {} kernels looks like this:"""
 
 ASCENDC_PROBLEM_STATEMENT = 'You are an expert in writing custom AscendC kernels to optimize PyTorch architectures by replacing specific operators for performance gains.\n'
-ASCENDC_PROBLEM_INSTRUCTION='''
-Your task: Replace relevant PyTorch operators in the architecture named Model with custom AscendC kernels. Generate an optimized version named ModelNew, including the six Python strings listed above. Just output the code, no other text, and NO testing code!\n
-'''
+ASCENDC_PROBLEM_INSTRUCTION="""Your task: Replace relevant PyTorch operators in the architecture named Model with custom AscendC kernels. Generate an optimized version named ModelNew, including the six Python strings listed above. Just output the code, no other text, and NO testing code!
+"""
+
+
+def _code_block(code, language=""):
+    fence = f"```{language}" if language else "```"
+    return f"{fence}\n{code.strip()}\n```"
 
 def read_relavant_files(language, op, example):
     category = dataset[op]['category']
@@ -53,57 +54,47 @@ def read_relavant_files(language, op, example):
     return arch, example_arch, example_new_arch
 
 def generate_template(arc_src, example_arch_src, example_new_arch_src, language):
-    prompt = template_statement.format(language, language)
+    prompt_parts = [textwrap.dedent(template_statement.format(language, language)).strip()]
 
     if example_arch_src != "" and example_new_arch_src != "":
-        prompt += f"""
-        {template_example_intro.format(language)} \n
-        ``` \n
-        {example_arch_src}
-        ``` \n
-        {template_new_arch_intro.format(language)} 
-        ```
-        {example_new_arch_src}
-        ``` \n
-        """
+        prompt_parts.append("\n\n".join([
+            template_example_intro.format(language).strip(),
+            _code_block(example_arch_src),
+            template_new_arch_intro.format(language).strip(),
+            _code_block(example_new_arch_src),
+        ]))
 
-    prompt += f"""
-    You are given the following architecture: \n
-    ```
-    {arc_src}
-    ```
-    """
-    prompt += template_instruction.format(language)
-    return prompt    
+    prompt_parts.append("\n\n".join([
+        "You are given the following architecture:",
+        _code_block(arc_src),
+    ]))
+    prompt_parts.append(textwrap.dedent(template_instruction.format(language)).strip())
+    return "\n\n".join(prompt_parts) + "\n"
 
 def ascendc_template(arc_src, example_arch_src, example_new_arch_src, op, example_op):
-        # add custom to name to prevent conficts with existing operators
-        op = op + '_custom'
-        example_op = example_op + '_custom'
-        prompt = ASCENDC_PROBLEM_STATEMENT
+    # add custom to name to prevent conflicts with existing operators
+    op = op + '_custom'
+    example_op = example_op + '_custom'
+    prompt_parts = [textwrap.dedent(ASCENDC_PROBLEM_STATEMENT).strip()]
 
-        if example_arch_src != "" and example_new_arch_src != "":
-            prompt += f"""
-    Here is an example to illustrate the expected transformation using custom AscendC operators. **Original architecture with kernel name `{example_op}`:**\n
-    ```python \n
-    {example_arch_src}
-    ``` \n
-    Transformed version using custom AscendC kernels:
-    This transformation includes six embedded Python strings: `project_json_src`, `host_tiling_src`, `host_operator_src`, `kernel_src`, `python_bind_src` and `model_src`.
-    The kernel function name in `kernel_src` must exactly match the provided kernel name. The operator definition in `project_json_src` and `host_operator_src` should also correspond to the kernel name, but follow PascalCase naming: 
-    ```python
-    {example_new_arch_src}
-    ``` \n
-    """
+    if example_arch_src != "" and example_new_arch_src != "":
+        prompt_parts.append("\n\n".join([
+            "Here is an example to illustrate the expected transformation using custom AscendC operators.",
+            f"Original architecture with kernel name `{example_op}`:",
+            _code_block(example_arch_src, "python"),
+            "Transformed version using custom AscendC kernels:",
+            "This transformation includes six embedded Python strings: `project_json_src`, `host_tiling_src`, `host_operator_src`, `kernel_src`, `python_bind_src` and `model_src`.",
+            "The kernel function name in `kernel_src` must exactly match the provided kernel name.",
+            "The operator definition in `project_json_src` and `host_operator_src` should also correspond to the kernel name, but follow PascalCase naming.",
+            _code_block(example_new_arch_src, "python"),
+        ]))
 
-        prompt += f"""
-    Now, you are given the following architecture with kernel name {op}(PascalCase: {underscore_to_pascalcase(op)}): \n
-    ```python
-    {arc_src}
-    ```
-        """
-        prompt += ASCENDC_PROBLEM_INSTRUCTION
-        return prompt
+    prompt_parts.append("\n\n".join([
+        f"Now, you are given the following architecture with kernel name `{op}` (PascalCase: `{underscore_to_pascalcase(op)}`):",
+        _code_block(arc_src, "python"),
+    ]))
+    prompt_parts.append(textwrap.dedent(ASCENDC_PROBLEM_INSTRUCTION).strip())
+    return "\n\n".join(prompt_parts) + "\n"
 
 
 ASCENDC_DIRECT_LAUNCH_PROBLEM_STATEMENT = """
