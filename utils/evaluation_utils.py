@@ -50,7 +50,7 @@ def eval_single(response_txt:str, op, language):
         'hardware': hardware,
         'cheating': False,
     }
-    generated_code = extract_first_code(response_txt, ['python', 'cpp'])
+    generated_code = extract_first_code(response_txt, ['python', 'cpp', 'json'])
     if generated_code is None:
         generated_code = response_txt
     is_cheating, cheating_info = backend.detect_cheating(generated_code)
