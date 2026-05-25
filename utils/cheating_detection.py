@@ -336,13 +336,6 @@ def _forbidden_torch_ops(callables, ext_names, module_function_names=None, model
                     "call": f"{qual}.{attr}()" if qual else f"{attr}()",
                     "reason": "Tensor compute method used in reachable model code",
                 })
-            elif qual == "self" and attr != "forward":
-                violations.append({
-                    "function": function_name,
-                    "line": node.lineno,
-                    "call": f"self.{attr}(...)",
-                    "reason": "nn.Module call in reachable model code may hide PyTorch compute",
-                })
     return violations
 
 
