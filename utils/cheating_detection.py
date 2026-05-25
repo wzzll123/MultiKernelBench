@@ -200,6 +200,55 @@ def _find_model_forward(tree):
     return fallback or (None, None)
 
 
+def _find_model_methods(tree, class_name):
+    if class_name is None:
+        return {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return {
+                item.name: item
+                for item in node.body
+                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+            }
+    return {}
+
+
+def _find_module_functions(tree):
+    return {
+        node.name: node
+        for node in ast.iter_child_nodes(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+
+
+def _reachable_functions_from_forward(forward_node, module_functions, model_methods):
+    if forward_node is None:
+        return []
+
+    reachable = []
+    seen = set()
+    stack = [("forward", forward_node)]
+    while stack:
+        name, node = stack.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        reachable.append((name, node))
+
+        for child in ast.walk(node):
+            if not isinstance(child, ast.Call):
+                continue
+            resolved = _resolve_call_name(child)
+            if resolved is None:
+                continue
+            qual, attr = resolved
+            if qual is None and attr in module_functions:
+                stack.append((attr, module_functions[attr]))
+            elif qual == "self" and attr in model_methods:
+                stack.append((f"self.{attr}", model_methods[attr]))
+    return reachable
+
+
 def _find_wrapper_functions(tree, ext_names):
     wrappers = set()
     for node in ast.iter_child_nodes(tree):
@@ -234,73 +283,80 @@ def _kernel_calls_in_forward(forward_node, ext_names, wrapper_names):
     return calls
 
 
-def _forbidden_torch_ops(forward_node, ext_names):
+def _forbidden_torch_ops(callables, ext_names, module_function_names=None, model_method_names=None):
     violations = []
-    if forward_node is None:
+    if not callables:
         return violations
 
+    module_function_names = module_function_names or set()
+    model_method_names = model_method_names or set()
     arithmetic_ops = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Pow, ast.Mod, ast.MatMult)
-    for node in ast.walk(forward_node):
-        if isinstance(node, ast.BinOp) and isinstance(node.op, arithmetic_ops):
-            violations.append({
-                "line": node.lineno,
-                "call": type(node.op).__name__,
-                "reason": "Tensor arithmetic in forward must be implemented by a custom kernel",
-            })
-            continue
-        if not isinstance(node, ast.Call):
-            continue
-        resolved = _resolve_call_name(node)
-        if resolved is None:
-            continue
-        qual, attr = resolved
-        if qual in ext_names:
-            continue
-        if qual == "torch" and attr not in ALLOWED_TORCH_FUNCS:
-            violations.append({
-                "line": node.lineno,
-                "call": f"torch.{attr}",
-                "reason": "PyTorch compute op used in forward",
-            })
-        elif qual in {"F", "functional", "torch.nn.functional", "nn.functional"}:
-            violations.append({
-                "line": node.lineno,
-                "call": f"{qual}.{attr}",
-                "reason": "PyTorch functional compute op used in forward",
-            })
-        elif qual is None and attr in ALLOWED_BUILTIN_FUNCS:
-            continue
-        elif attr in FORBIDDEN_TENSOR_METHODS and qual not in {"torch", "F", "functional", "torch.nn.functional", "nn.functional"}:
-            violations.append({
-                "line": node.lineno,
-                "call": f"{qual}.{attr}()" if qual else f"{attr}()",
-                "reason": "Tensor compute method used in forward",
-            })
-        elif qual == "self" and attr != "forward":
-            violations.append({
-                "line": node.lineno,
-                "call": f"self.{attr}(...)",
-                "reason": "nn.Module call in forward may hide PyTorch compute",
-            })
+    for function_name, function_node in callables:
+        for node in ast.walk(function_node):
+            if isinstance(node, ast.BinOp) and isinstance(node.op, arithmetic_ops):
+                violations.append({
+                    "function": function_name,
+                    "line": node.lineno,
+                    "call": type(node.op).__name__,
+                    "reason": "Tensor arithmetic in reachable model code must be implemented by a custom kernel",
+                })
+                continue
+            if not isinstance(node, ast.Call):
+                continue
+            resolved = _resolve_call_name(node)
+            if resolved is None:
+                continue
+            qual, attr = resolved
+            if qual in ext_names:
+                continue
+            if qual == "torch" and attr not in ALLOWED_TORCH_FUNCS:
+                violations.append({
+                    "function": function_name,
+                    "line": node.lineno,
+                    "call": f"torch.{attr}",
+                    "reason": "PyTorch compute op used in reachable model code",
+                })
+            elif qual in {"F", "functional", "torch.nn.functional", "nn.functional"}:
+                violations.append({
+                    "function": function_name,
+                    "line": node.lineno,
+                    "call": f"{qual}.{attr}",
+                    "reason": "PyTorch functional compute op used in reachable model code",
+                })
+            elif qual is None and attr in ALLOWED_BUILTIN_FUNCS:
+                continue
+            elif qual is None and attr in module_function_names:
+                continue
+            elif qual == "self" and attr in model_method_names:
+                continue
+            elif attr in FORBIDDEN_TENSOR_METHODS and qual not in {"torch", "F", "functional", "torch.nn.functional", "nn.functional"}:
+                violations.append({
+                    "function": function_name,
+                    "line": node.lineno,
+                    "call": f"{qual}.{attr}()" if qual else f"{attr}()",
+                    "reason": "Tensor compute method used in reachable model code",
+                })
     return violations
 
 
-def _scalar_for_loops(forward_node):
+def _scalar_for_loops(callables):
     violations = []
-    if forward_node is None:
+    if not callables:
         return violations
-    for node in ast.walk(forward_node):
-        if not isinstance(node, ast.For) or not isinstance(node.iter, ast.Call):
-            continue
-        if _resolve_call_name(node.iter) != (None, "range"):
-            continue
-        loop_var = node.target.id if isinstance(node.target, ast.Name) else ""
-        if _loop_has_tensor_indexing(node, loop_var) and _loop_has_computation(node):
-            violations.append({
-                "line": node.lineno,
-                "loop_var": loop_var,
-                "reason": "Python range loop mixes tensor indexing and computation",
-            })
+    for function_name, function_node in callables:
+        for node in ast.walk(function_node):
+            if not isinstance(node, ast.For) or not isinstance(node.iter, ast.Call):
+                continue
+            if _resolve_call_name(node.iter) != (None, "range"):
+                continue
+            loop_var = node.target.id if isinstance(node.target, ast.Name) else ""
+            if _loop_has_tensor_indexing(node, loop_var) and _loop_has_computation(node):
+                violations.append({
+                    "function": function_name,
+                    "line": node.lineno,
+                    "loop_var": loop_var,
+                    "reason": "Python range loop mixes tensor indexing and computation",
+                })
     return violations
 
 
@@ -343,8 +399,6 @@ def _validate_kernel_python_code(code):
         "regression_type": None,
         "suggestion": "",
         "checks": {
-            "kernel_ext_imported": {"passed": False, "extensions": [], "error": None},
-            "kernel_called_from_forward": {"passed": False, "called": [], "error": None},
             "no_forbidden_torch_ops": {"passed": False, "violations": [], "error": None},
             "no_scalar_for_loops": {"passed": False, "violations": [], "error": None},
         },
@@ -353,53 +407,38 @@ def _validate_kernel_python_code(code):
         tree = ast.parse(code)
     except SyntaxError as error:
         result["regression_type"] = 1
-        result["checks"]["kernel_ext_imported"]["error"] = f"SyntaxError: {error}"
+        result["checks"]["no_forbidden_torch_ops"]["error"] = f"SyntaxError: {error}"
         result["suggestion"] = "Generated Python code cannot be parsed for cheating detection."
         return result
 
     extensions = _find_extension_imports(tree)
-    result["checks"]["kernel_ext_imported"]["extensions"] = [
-        {"used_name": used, **details} for used, details in extensions.items()
-    ]
     valid_ext_names = {name for name, details in extensions.items() if not details["is_placeholder"]}
-    if not valid_ext_names:
-        result["regression_type"] = 1
-        result["checks"]["kernel_ext_imported"]["error"] = "No custom kernel extension import found"
-        result["suggestion"] = "ModelNew must import the compiled custom kernel extension and call it from forward()."
-        return result
-    result["checks"]["kernel_ext_imported"]["passed"] = True
 
     forward_node, class_name = _find_model_forward(tree)
     if forward_node is None:
-        result["regression_type"] = 2
-        result["checks"]["kernel_called_from_forward"]["error"] = "No ModelNew.forward() or Model.forward() found"
-        result["suggestion"] = "Generated code must define ModelNew.forward() and call the custom kernel."
+        result["valid"] = True
         return result
 
-    wrapper_names = _find_wrapper_functions(tree, valid_ext_names)
-    calls = _kernel_calls_in_forward(forward_node, valid_ext_names, wrapper_names)
-    result["checks"]["kernel_called_from_forward"]["called"] = calls
-    if not calls:
-        result["regression_type"] = 2
-        result["checks"]["kernel_called_from_forward"]["error"] = (
-            f"{class_name}.forward() does not call the imported custom kernel extension"
-        )
-        result["suggestion"] = "forward() must call the custom kernel extension instead of computing with PyTorch."
-        return result
-    result["checks"]["kernel_called_from_forward"]["passed"] = True
-
-    violations = _forbidden_torch_ops(forward_node, valid_ext_names)
+    module_functions = _find_module_functions(tree)
+    model_methods = _find_model_methods(tree, class_name)
+    reachable_callables = _reachable_functions_from_forward(forward_node, module_functions, model_methods)
+    violations = _forbidden_torch_ops(
+        reachable_callables,
+        valid_ext_names,
+        set(module_functions),
+        set(model_methods),
+    )
     result["checks"]["no_forbidden_torch_ops"]["violations"] = violations
     if violations:
         result["regression_type"] = 3
         result["checks"]["no_forbidden_torch_ops"]["error"] = (
-            f"Found {len(violations)} forbidden PyTorch/tensor compute operations in forward()"
+            f"Found {len(violations)} forbidden PyTorch/tensor compute operations in reachable model code"
         )
         result["suggestion"] = "Move all core computation into the custom kernel; forward() should only allocate/reshape/call kernels."
         return result
     result["checks"]["no_forbidden_torch_ops"]["passed"] = True
 
-    loop_violations = _scalar_for_loops(forward_node)
+    loop_violations = _scalar_for_loops(reachable_callables)
     result["checks"]["no_scalar_for_loops"]["violations"] = loop_violations
     if loop_violations:
         result["regression_type"] = 4

@@ -30,6 +30,15 @@ def extract_first_code(output_string: str, code_language_types: list[str]) -> st
 
     return None
 
+
+def attach_cheating_result(result, backend, generated_code):
+    is_cheating, cheating_info = backend.detect_cheating(generated_code)
+    if is_cheating:
+        result['cheating'] = True
+        result['cheating_info'] = cheating_info
+    return result
+
+
 def eval_single(response_txt:str, op, language):
     # Try to dynamically import the backend if it's not yet registered
     if language not in BACKEND_REGISTRY:
@@ -53,15 +62,10 @@ def eval_single(response_txt:str, op, language):
     generated_code = extract_first_code(response_txt, ['python', 'cpp', 'json'])
     if generated_code is None:
         generated_code = response_txt
-    is_cheating, cheating_info = backend.detect_cheating(generated_code)
-    if is_cheating:
-        result['cheating'] = True
-        result['cheating_info'] = cheating_info
-        return result
     compiled, compile_info = backend.compile(generated_code, op)
     if not compiled:
         result['compile_info'] = compile_info
-        return result
+        return attach_cheating_result(result, backend, generated_code)
     result['compiled'] = True
     ref_src_path = get_ref_src_path(op)
     with open(ref_src_path, 'r') as f:
@@ -69,7 +73,7 @@ def eval_single(response_txt:str, op, language):
     correctness, info = backend.correctness_execution(ref_src)
     if not correctness:
         result['correctness_info'] = info
-        return result
+        return attach_cheating_result(result, backend, generated_code)
     result['correctness'] = True
     elapsed_times = backend.time_execution()
     result['performance'] = {
@@ -79,6 +83,7 @@ def eval_single(response_txt:str, op, language):
         "max": float(f"{np.max(elapsed_times):.3g}"),
         "num_trials": len(elapsed_times),
     }
+    attach_cheating_result(result, backend, generated_code)
     backend.cleanup()
     return result
 
