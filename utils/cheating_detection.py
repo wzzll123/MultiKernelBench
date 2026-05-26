@@ -244,6 +244,27 @@ def _is_forbidden_nn_module_call(call_node):
     return qual in {"nn", "torch.nn"} and attr in FORBIDDEN_NN_MODULES
 
 
+def _is_nn_sequential_call(call_node):
+    resolved = _resolve_call_name(call_node)
+    if resolved is None:
+        return False
+    qual, attr = resolved
+    return qual in {"nn", "torch.nn"} and attr == "Sequential"
+
+
+def _forbidden_nn_modules_inside(call_node):
+    if not _is_nn_sequential_call(call_node):
+        return []
+
+    modules = []
+    for child in ast.walk(call_node):
+        if child is call_node or not isinstance(child, ast.Call):
+            continue
+        if _is_forbidden_nn_module_call(child):
+            modules.append(_call_display_name(child))
+    return modules
+
+
 def _custom_class_constructed(call_node, class_defs):
     resolved = _resolve_call_name(call_node)
     if resolved is None:
@@ -273,6 +294,11 @@ def _self_module_attrs(class_node, class_defs):
                     custom_attrs[target.attr] = custom_class
                 elif _is_forbidden_nn_module_call(node.value):
                     forbidden_attrs[target.attr] = _call_display_name(node.value)
+                else:
+                    forbidden_modules = _forbidden_nn_modules_inside(node.value)
+                    if forbidden_modules:
+                        modules = ", ".join(dict.fromkeys(forbidden_modules))
+                        forbidden_attrs[target.attr] = f"{_call_display_name(node.value)}({modules})"
     return custom_attrs, forbidden_attrs
 
 
