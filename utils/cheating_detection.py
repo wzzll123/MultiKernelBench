@@ -48,6 +48,24 @@ FORBIDDEN_TENSOR_METHODS = {
     "eq", "ne", "lt", "gt", "le", "ge", "where",
 }
 
+FORBIDDEN_NN_MODULES = {
+    "AdaptiveAvgPool1d", "AdaptiveAvgPool2d", "AdaptiveAvgPool3d",
+    "AdaptiveMaxPool1d", "AdaptiveMaxPool2d", "AdaptiveMaxPool3d",
+    "AvgPool1d", "AvgPool2d", "AvgPool3d",
+    "BatchNorm1d", "BatchNorm2d", "BatchNorm3d",
+    "Conv1d", "Conv2d", "Conv3d",
+    "ConvTranspose1d", "ConvTranspose2d", "ConvTranspose3d",
+    "Dropout", "Dropout1d", "Dropout2d", "Dropout3d",
+    "ELU", "GELU", "GLU", "Hardtanh", "Hardsigmoid", "Hardswish",
+    "InstanceNorm1d", "InstanceNorm2d", "InstanceNorm3d",
+    "LayerNorm", "LeakyReLU", "Linear", "LocalResponseNorm",
+    "LogSigmoid", "LogSoftmax",
+    "MaxPool1d", "MaxPool2d", "MaxPool3d",
+    "PReLU", "ReLU", "ReLU6", "RMSNorm", "SELU", "SiLU",
+    "Sigmoid", "Softmax", "Softmin", "Softplus", "Softshrink",
+    "Tanh", "Tanhshrink", "Threshold",
+}
+
 PLACEHOLDER_IMPORT_NAMES = {"TORCH_EXTENSION_NAME"}
 
 KERNEL_EXT_PATTERNS = [
@@ -200,17 +218,88 @@ def _find_model_forward(tree):
     return fallback or (None, None)
 
 
-def _find_model_methods(tree, class_name):
-    if class_name is None:
+def _find_class_defs(tree):
+    return {
+        node.name: node
+        for node in ast.iter_child_nodes(tree)
+        if isinstance(node, ast.ClassDef)
+    }
+
+
+def _class_methods(class_node):
+    if class_node is None:
         return {}
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef) and node.name == class_name:
-            return {
-                item.name: item
-                for item in node.body
-                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
-            }
-    return {}
+    return {
+        item.name: item
+        for item in class_node.body
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+
+
+def _is_forbidden_nn_module_call(call_node):
+    resolved = _resolve_call_name(call_node)
+    if resolved is None:
+        return False
+    qual, attr = resolved
+    return qual in {"nn", "torch.nn"} and attr in FORBIDDEN_NN_MODULES
+
+
+def _is_nn_sequential_call(call_node):
+    resolved = _resolve_call_name(call_node)
+    if resolved is None:
+        return False
+    qual, attr = resolved
+    return qual in {"nn", "torch.nn"} and attr == "Sequential"
+
+
+def _forbidden_nn_modules_inside(call_node):
+    if not _is_nn_sequential_call(call_node):
+        return []
+
+    modules = []
+    for child in ast.walk(call_node):
+        if child is call_node or not isinstance(child, ast.Call):
+            continue
+        if _is_forbidden_nn_module_call(child):
+            modules.append(_call_display_name(child))
+    return modules
+
+
+def _custom_class_constructed(call_node, class_defs):
+    resolved = _resolve_call_name(call_node)
+    if resolved is None:
+        return None
+    qual, attr = resolved
+    if qual is None and attr in class_defs:
+        return attr
+    return None
+
+
+def _self_module_attrs(class_node, class_defs):
+    custom_attrs = {}
+    forbidden_attrs = {}
+    for method in _class_methods(class_node).values():
+        for node in ast.walk(method):
+            if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Call):
+                continue
+            for target in node.targets:
+                if not (
+                    isinstance(target, ast.Attribute)
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == "self"
+                ):
+                    continue
+                custom_class = _custom_class_constructed(node.value, class_defs)
+                if custom_class is not None:
+                    custom_attrs[target.attr] = custom_class
+                elif _is_forbidden_nn_module_call(node.value):
+                    forbidden_attrs[target.attr] = _call_display_name(node.value)
+                else:
+                    forbidden_modules = _forbidden_nn_modules_inside(node.value)
+                    if forbidden_modules:
+                        modules = ", ".join(dict.fromkeys(forbidden_modules))
+                        forbidden_attrs[target.attr] = f"{_call_display_name(node.value)}({modules})"
+    return custom_attrs, forbidden_attrs
 
 
 def _find_module_functions(tree):
@@ -221,19 +310,32 @@ def _find_module_functions(tree):
     }
 
 
-def _reachable_functions_from_forward(forward_node, module_functions, model_methods):
+def _call_display_name(call_node):
+    resolved = _resolve_call_name(call_node)
+    if resolved is None:
+        return "<unknown>"
+    qual, attr = resolved
+    return f"{qual}.{attr}" if qual else attr
+
+
+def _reachable_functions_from_forward(forward_node, root_class_name, module_functions, class_defs):
     if forward_node is None:
         return []
 
     reachable = []
     seen = set()
-    stack = [("forward", forward_node)]
+    stack = [("forward", forward_node, root_class_name)]
     while stack:
-        name, node = stack.pop()
-        if name in seen:
+        name, node, class_name = stack.pop()
+        key = (name, class_name)
+        if key in seen:
             continue
-        seen.add(name)
-        reachable.append((name, node))
+        seen.add(key)
+        reachable.append((name, node, class_name))
+
+        class_node = class_defs.get(class_name)
+        class_methods = _class_methods(class_node)
+        custom_attrs, _ = _self_module_attrs(class_node, class_defs)
 
         for child in ast.walk(node):
             if not isinstance(child, ast.Call):
@@ -243,55 +345,30 @@ def _reachable_functions_from_forward(forward_node, module_functions, model_meth
                 continue
             qual, attr = resolved
             if qual is None and attr in module_functions:
-                stack.append((attr, module_functions[attr]))
-            elif qual == "self" and attr in model_methods:
-                stack.append((f"self.{attr}", model_methods[attr]))
+                stack.append((attr, module_functions[attr], None))
+            elif qual == "self" and attr in class_methods:
+                stack.append((f"{class_name}.{attr}", class_methods[attr], class_name))
+            elif qual == "self" and attr in custom_attrs:
+                submodule_class = custom_attrs[attr]
+                submodule_forward = _class_methods(class_defs.get(submodule_class)).get("forward")
+                if submodule_forward is not None:
+                    stack.append((f"{class_name}.{attr}.forward", submodule_forward, submodule_class))
     return reachable
 
 
-def _find_wrapper_functions(tree, ext_names):
-    wrappers = set()
-    for node in ast.iter_child_nodes(tree):
-        if not isinstance(node, ast.FunctionDef):
-            continue
-        for child in ast.walk(node):
-            if isinstance(child, ast.Call):
-                resolved = _resolve_call_name(child)
-                if resolved and resolved[0] in ext_names:
-                    wrappers.add(node.name)
-                    break
-    return wrappers
-
-
-def _kernel_calls_in_forward(forward_node, ext_names, wrapper_names):
-    calls = []
-    if forward_node is None:
-        return calls
-    for node in ast.walk(forward_node):
-        if not isinstance(node, ast.Call):
-            continue
-        resolved = _resolve_call_name(node)
-        if resolved is None:
-            continue
-        qual, attr = resolved
-        if qual in ext_names:
-            calls.append({"call": f"{qual}.{attr}", "line": node.lineno})
-        elif qual is None and attr in wrapper_names:
-            calls.append({"call": attr, "line": node.lineno})
-        elif qual == "self" and attr in wrapper_names:
-            calls.append({"call": f"self.{attr}", "line": node.lineno})
-    return calls
-
-
-def _forbidden_torch_ops(callables, ext_names, module_function_names=None, model_method_names=None):
+def _forbidden_torch_ops(callables, ext_names, module_function_names=None, class_defs=None):
     violations = []
     if not callables:
         return violations
 
     module_function_names = module_function_names or set()
-    model_method_names = model_method_names or set()
+    class_defs = class_defs or {}
     arithmetic_ops = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Pow, ast.Mod, ast.MatMult)
-    for function_name, function_node in callables:
+    for function_name, function_node, class_name in callables:
+        class_node = class_defs.get(class_name)
+        class_methods = _class_methods(class_node)
+        custom_attrs, forbidden_attrs = _self_module_attrs(class_node, class_defs)
+
         for node in ast.walk(function_node):
             if isinstance(node, ast.BinOp) and isinstance(node.op, arithmetic_ops):
                 violations.append({
@@ -327,8 +404,17 @@ def _forbidden_torch_ops(callables, ext_names, module_function_names=None, model
                 continue
             elif qual is None and attr in module_function_names:
                 continue
-            elif qual == "self" and attr in model_method_names:
+            elif qual == "self" and attr in class_methods:
                 continue
+            elif qual == "self" and attr in custom_attrs:
+                continue
+            elif qual == "self" and attr in forbidden_attrs:
+                violations.append({
+                    "function": function_name,
+                    "line": node.lineno,
+                    "call": f"self.{attr}(...)",
+                    "reason": f"PyTorch nn.Module compute op used in reachable model code: {forbidden_attrs[attr]}",
+                })
             elif attr in FORBIDDEN_TENSOR_METHODS and qual not in {"torch", "F", "functional", "torch.nn.functional", "nn.functional"}:
                 violations.append({
                     "function": function_name,
@@ -343,7 +429,7 @@ def _scalar_for_loops(callables):
     violations = []
     if not callables:
         return violations
-    for function_name, function_node in callables:
+    for function_name, function_node, _ in callables:
         for node in ast.walk(function_node):
             if not isinstance(node, ast.For) or not isinstance(node.iter, ast.Call):
                 continue
@@ -420,13 +506,13 @@ def _validate_kernel_python_code(code):
         return result
 
     module_functions = _find_module_functions(tree)
-    model_methods = _find_model_methods(tree, class_name)
-    reachable_callables = _reachable_functions_from_forward(forward_node, module_functions, model_methods)
+    class_defs = _find_class_defs(tree)
+    reachable_callables = _reachable_functions_from_forward(forward_node, class_name, module_functions, class_defs)
     violations = _forbidden_torch_ops(
         reachable_callables,
         valid_ext_names,
         set(module_functions),
-        set(model_methods),
+        class_defs,
     )
     result["checks"]["no_forbidden_torch_ops"]["violations"] = violations
     if violations:
