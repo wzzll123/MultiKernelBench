@@ -28,6 +28,8 @@ MultiKernelBench/
 `reference/` is organized by `category`. The `--categories` argument should use these directory names (e.g., `activation`, `attention`, `convolution`, `matmul`, etc.).
 
 ## Latest News
+- **28/05/2026** – Added **AscendC direct-launch backend** support for `<<<>>>` kernel launches.
+- **28/05/2026** – Added **anti-hack detection** for generated code that replaces custom kernels with PyTorch/Python compute.
 - **27/10/2025** – Introduced a new task category featuring 15 attention tasks, including MQA and GQA. 
 - **08/10/2025** – Added **TileLang-Ascend backend** support for **Ascend NPUs**.  
 - **12/08/2025** – Added **SYCL backend** support for **Intel GPUs** – thanks to **NinaWie** for the contribution!  
