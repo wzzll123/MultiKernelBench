@@ -14,6 +14,7 @@ SKIP_DIRS = {
     ".git",
     "__pycache__",
     "build",
+    "dist",
     "cmake-build-debug",
     "cmake-build-release",
 }
@@ -87,16 +88,14 @@ def resolve_model_path(project_dir, model_arg):
     )
 
 
-def iter_kernel_sources(project_dir):
-    kernel_dir = project_dir / "kernel"
-    if not kernel_dir.is_dir():
-        raise FileNotFoundError(f"Kernel directory not found: {kernel_dir}")
-
-    for path in sorted(kernel_dir.rglob("*")):
+def iter_source_files(project_dir, model_path):
+    for path in sorted(project_dir.rglob("*")):
         if not path.is_file():
             continue
         rel_parts = path.relative_to(project_dir).parts
         if any(part in SKIP_DIRS for part in rel_parts):
+            continue
+        if path == model_path:
             continue
         if path.suffix in SOURCE_SUFFIXES:
             yield path
@@ -116,7 +115,7 @@ def build_spec(project_dir, args):
             "content": read_text(model_path),
         }
     ]
-    for source_path in iter_kernel_sources(project_dir):
+    for source_path in iter_source_files(project_dir, model_path):
         sources.append(
             {
                 "path": source_path.relative_to(project_dir).as_posix(),
