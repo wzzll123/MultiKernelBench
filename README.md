@@ -83,6 +83,19 @@ python evaluation.py --model deepseek-chat --language ascendc --strategy add_sho
 ```
 Evaluation result is saved in ```output/{language}/{strategy}/{temperature}-{top_p}/{model_name}/run{run}/result_{category}.json```.
 
+### Evaluate a Single Response
+Use `eval_single_runner.py` when you already have one generated response file and want to evaluate one task directly:
+
+```bash
+python eval_single_runner.py \
+  --input prompts/ascendc_direct_launch_model_relu.json \
+  --op relu \
+  --language ascendc_direct_launch \
+  --result tmp/relu_result.json
+```
+
+The runner writes one JSON object containing compile status, correctness, performance, hardware, and anti-hack detection fields.
+
 ## Adding a Prompting Strategy for a New or Existing Language
 
 To add a custom prompting strategy, follow these steps:
