@@ -91,7 +91,7 @@ python eval_single_runner.py \
   --input prompts/ascendc_direct_launch_model_relu.json \
   --op relu \
   --language ascendc_direct_launch \
-  --result tmp/relu_result.json
+  --result relu_result.json
 ```
 
 The runner writes one JSON object containing compile status, correctness, performance, hardware, and anti-hack detection fields.
