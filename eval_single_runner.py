@@ -56,6 +56,10 @@ def main():
         raise ValueError(f"Unknown op: {args.op}")
     if not input_path.is_file():
         raise FileNotFoundError(f"Generated response file not found: {input_path}")
+    if result_path.parent.exists() and not result_path.parent.is_dir():
+        raise FileExistsError(
+            f"Result parent path exists but is not a directory: {result_path.parent}"
+        )
 
     from utils.evaluation_utils import eval_single
 
