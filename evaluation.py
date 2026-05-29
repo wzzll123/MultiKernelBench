@@ -25,7 +25,18 @@ def eval_all(out_dir, language, categories, op_tested=dataset.keys()):
             tf_input.flush()
             try:
                 subprocess.run(
-                    ['python3', 'eval_single_runner.py', tf_input.name, op, language, tf_output.name],
+                    [
+                        'python3',
+                        'eval_single_runner.py',
+                        '--input',
+                        tf_input.name,
+                        '--op',
+                        op,
+                        '--language',
+                        language,
+                        '--result',
+                        tf_output.name,
+                    ],
                     check=True,
                     text=True,
                     timeout=180
