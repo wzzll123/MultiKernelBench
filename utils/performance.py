@@ -1,20 +1,27 @@
 from config import num_perf_trials, num_warmup
 import torch
 
+def _to_device(values, device):
+    return [
+        x.to(device) if isinstance(x, torch.Tensor) else x
+        for x in values
+    ]
+
+def _get_perf_inputs(context):
+    if "get_input_groups" in context:
+        input_groups = context["get_input_groups"]()
+        if not input_groups:
+            raise ValueError("get_input_groups() returned no inputs")
+        return input_groups[0]
+    return context['get_inputs']()
+
 def time_execution_event_template(context, device, synchronize, event_class, eval_target):
-    get_inputs = context['get_inputs']
     get_init_inputs = context['get_init_inputs']
     generated_elapsed_times = []
     ModelNew = context[eval_target]
-    inputs = get_inputs()
-    inputs = [
-        x.to(device) if isinstance(x, torch.Tensor) else x
-        for x in inputs
-    ]
+    inputs = _to_device(_get_perf_inputs(context), device)
     init_inputs = get_init_inputs()
-    init_inputs = [
-        x.to(device=device) if isinstance(x, torch.Tensor) else x for x in init_inputs
-    ]
+    init_inputs = _to_device(init_inputs, device)
     with torch.no_grad():
         custom_model = ModelNew(*init_inputs).to(device)
         def internel_eval(kernel_fn, elapsed_times):
