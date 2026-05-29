@@ -4,6 +4,11 @@ from config import project_root_path
 from dataset import dataset
 from utils.utils import read_file, underscore_to_pascalcase
 
+
+def get_reference_path(op):
+    category = dataset[op]['category']
+    return os.path.join(project_root_path, f"reference/{category}/{op}.py")
+
 template_statement="""You write custom {} kernels to replace the pytorch operators in the given architecture to get speedups.
 
 You have complete freedom to choose the set of operators you want to replace. You may make the decision to replace some operators with custom {} kernels and leave others unchanged. You may replace multiple operators with custom implementations, consider operator fusion opportunities (combining multiple operators into a single kernel, for example, combining matmul+relu), or algorithmic changes (such as online softmax). You are only limited by your imagination.
@@ -25,16 +30,13 @@ def _code_block(code, language=""):
     return f"{fence}\n{code.strip()}\n```"
 
 def read_relavant_files(language, op, example):
-    category = dataset[op]['category']
     example_arch_path = os.path.join(
         project_root_path, f"prompts/cuda_model_{example}.py"
     )
     example_new_arch_path = os.path.join(
         project_root_path, f"prompts/{language}_new_model_{example}.py"
     )
-    new_arch_path = os.path.join(
-        project_root_path, f"reference/{category}/{op}.py"
-    )
+    new_arch_path = get_reference_path(op)
 
     if not os.path.exists(example_arch_path):
         raise FileNotFoundError(
@@ -136,16 +138,13 @@ Constraints:
 
 
 def read_direct_launch_relevant_files(op, example):
-    category = dataset[op]['category']
     example_arch_path = os.path.join(
         project_root_path, f"prompts/cuda_model_{example}.py"
     )
     example_json_path = os.path.join(
         project_root_path, f"prompts/ascendc_direct_launch_model_{example}.json"
     )
-    arch_path = os.path.join(
-        project_root_path, f"reference/{category}/{op}.py"
-    )
+    arch_path = get_reference_path(op)
 
     if not os.path.exists(example_arch_path):
         raise FileNotFoundError(f"Example architecture file not found: {example_arch_path}")

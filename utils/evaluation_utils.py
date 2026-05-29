@@ -69,7 +69,7 @@ def eval_single(response_txt:str, op, language):
     result['compiled'] = True
     ref_src_path = get_ref_src_path(op)
     with open(ref_src_path, 'r') as f:
-        ref_src = f.read()
+        ref_src = f"__file__ = {ref_src_path!r}\n" + f.read()
     correctness, info = backend.correctness_execution(ref_src)
     if not correctness:
         result['correctness_info'] = info
