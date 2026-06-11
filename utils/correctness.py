@@ -4,8 +4,11 @@ from config import num_correct_trials, project_root_path, seed_num
 
 def set_seed(seed: int):
     torch.manual_seed(seed)
-    # NOTE: this only sets on current cuda device
-    torch.cuda.manual_seed(seed)
+    # Backend packages such as torch_musa register their device API on torch.
+    for backend_name in ("cuda", "musa", "xpu", "npu"):
+        backend = getattr(torch, backend_name, None)
+        if backend is not None and hasattr(backend, "manual_seed"):
+            backend.manual_seed(seed)
 
 
 def _to_device(values, device):
