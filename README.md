@@ -1,6 +1,6 @@
 # MultiKernelBench
 
-A benchmark for evaluating LLMs' ability to generate kernels for various platform. Now supporting CUDA and triton kernels for GPUs, Ascendc and TileLang kernels for NPUs, pallas kernels for TPUs and SYCL kernels for Intel GPUs.
+A benchmark for evaluating LLMs' ability to generate kernels for various platform. Now supporting CUDA and triton kernels for GPUs, MUSA kernels for Moore Threads GPUs, Ascendc and TileLang kernels for NPUs, pallas kernels for TPUs and SYCL kernels for Intel GPUs.
 
 ## Directory Structure
 
@@ -49,6 +49,9 @@ pip install torch-npu==2.7.1
 
 # For Intel GPU (torch xpu) users:
 pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/xpu
+
+# For Moore Threads GPU (MUSA) users:
+# Install the torch_musa package matching your MUSA runtime.
 ```
 You can rent GPU or NPU resources from online platforms such as [autodl](https://www.autodl.com/home). For TPU resources, you can use services like [Google Colab](https://colab.research.google.com/)
 
@@ -66,6 +69,7 @@ export OPEN_ROUNTER_KEY=<your openrouter api key>
 ```bash
 python generate_and_write.py --model deepseek-chat --language ascendc --strategy add_shot --categories activation
 ```
+For MUSA generation, use `--language musa --strategy add_shot`.
 Generated code is saved in ```output/{language}/{strategy}/{temperature}-{top_p}/{model_name}/run{run}```.
 
 #### Available Arguments
