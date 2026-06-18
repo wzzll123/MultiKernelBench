@@ -6,5 +6,6 @@ from dataset import category2exampleop, dataset
 class MusaSelectPromptStrategy(BasePromptStrategy):
     def generate(self, op) -> str:
         category = dataset[op]['category']
-        arc_src, example_arch_src, example_new_arch_src = read_relavant_files('musa', op, category2exampleop[category])
+        example_op = category2exampleop.get(category, 'add')
+        arc_src, example_arch_src, example_new_arch_src = read_relavant_files('musa', op, example_op)
         return generate_template(arc_src, example_arch_src, example_new_arch_src, 'MUSA')
