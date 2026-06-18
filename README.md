@@ -28,6 +28,8 @@ MultiKernelBench/
 `reference/` is organized by `category`. The `--categories` argument should use these directory names (e.g., `activation`, `attention`, `convolution`, `matmul`, etc.).
 
 ## Latest News
+- **18/06/2026** – Added **MUSA selected-shot prompt strategy** support for **Moore Threads GPUs**; use `--language musa --strategy selected_shot`.
+- **11/06/2026** – Added initial **MUSA backend** support for **Moore Threads GPUs**; use `--language musa --strategy add_shot`.
 - **28/05/2026** – Added **AscendC direct-launch backend** support for `<<<>>>` kernel launches; use `--language ascendc_direct_launch --strategy add_shot`.
 - **28/05/2026** – Added **anti-hack detection** for generated code that replaces custom kernels with PyTorch/Python compute.
 - **27/10/2025** – Introduced a new task category featuring 15 attention tasks, including MQA and GQA. 
@@ -69,7 +71,7 @@ export OPEN_ROUNTER_KEY=<your openrouter api key>
 ```bash
 python generate_and_write.py --model deepseek-chat --language ascendc --strategy add_shot --categories activation
 ```
-For MUSA generation, use `--language musa --strategy add_shot`.
+For MUSA generation, use `--language musa --strategy add_shot` or `--language musa --strategy selected_shot`.
 Generated code is saved in ```output/{language}/{strategy}/{temperature}-{top_p}/{model_name}/run{run}```.
 
 #### Available Arguments
