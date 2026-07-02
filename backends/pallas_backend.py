@@ -3,8 +3,8 @@ from backends.backend_registry import register_backend, Backend
 import os
 import gc
 import torch_xla.core.xla_model as xm
-from utils.correctness import set_seed
-from config import seed_num, num_correct_trials, num_perf_trials, num_warmup
+from utils.correctness import execute_template
+from config import num_perf_trials, num_warmup
 import torch_xla
 import torch_xla.debug.metrics as met
 
@@ -30,53 +30,10 @@ class PallasBackend(Backend):
 
     def correctness_execution(self, ref_src):
         exec(ref_src, self.context)
-        correctness = True
-        correctness_information = ''
-        get_inputs = self.context['get_inputs']
-        get_init_inputs = self.context['get_init_inputs']
-        Model = self.context['Model']
-        ModelNew = self.context['ModelNew']
-            
-        try:
-            init_inputs = get_init_inputs()
-            init_inputs = [
-                x.to(device=self.device) if isinstance(x, torch.Tensor) else x for x in init_inputs
-            ]
-            with torch.no_grad():
-                set_seed(seed_num)  # set seed for reproducible weights
-                original_model = Model(*init_inputs).to(self.device)
-                torch_xla.sync(wait=True)
-                set_seed(seed_num)
-                custom_model = ModelNew(*init_inputs).to(self.device)
-                torch_xla.sync(wait=True)
-            with torch.no_grad():
-                for trial in range(num_correct_trials):
-                    inputs = get_inputs()
-                    inputs = [
-                        x.to(self.device) if isinstance(x, torch.Tensor) else x
-                        for x in inputs
-                    ]
-                    torch_xla.sync(wait=True)
-                    ref_output = original_model(*inputs)       
-                    torch_xla.sync(wait=True)
-                    new_output = custom_model(*inputs)
-                    torch_xla.sync(wait=True)
-                    feedback = None
-                    if ref_output.shape != new_output.shape:
-                        feedback = f"[FAIL] Output shape mismatch: Expected {ref_output.shape}, got {new_output.shape}"
-                    elif not torch.allclose(ref_output, new_output, atol=1e-02, rtol=1e-02):
-                        feedback = f"[FAIL] Output mismatch"
-                    if feedback is not None:
-                        correctness = False
-                        correctness_information = feedback
-                        break
-        except Exception as e:
-            print('[FAIL] runtime error when evaluating correctness')
-            correctness = False
-            correctness_information = f"[FAIL] {str(e)}"
-            return correctness, correctness_information
+        def synchronize(device=None):
+            torch_xla.sync(wait=True)
 
-        return correctness, correctness_information
+        return execute_template(synchronize, self.device, self.context)
 
     def time_execution(self, eval_target='ModelNew'):
         get_inputs = self.context['get_inputs']

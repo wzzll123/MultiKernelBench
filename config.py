@@ -8,7 +8,7 @@ catlass_include_path = "/virtual/path/to/catlass/include"
 
 # trial
 max_turn = 1
-num_correct_trials = 5
+num_correct_trials = 25
 num_perf_trials = 100
 num_warmup = 3
 
